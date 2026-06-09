@@ -66,13 +66,23 @@ public class MarkdownDocumentService {
     }
 
     /**
+     * 切分结果，包含完整文本（含 overlap 上下文）和核心文本（用于 embedding）
+     */
+    public record SplitResult(
+            /** 完整文本块（含 overlap 上下文，用于存储和检索返回） */
+            List<String> chunks,
+            /** 核心文本块（不含 overlap，用于生成 embedding） */
+            List<String> embeddingTexts
+    ) {}
+
+    /**
      * 读取 Markdown 并按指定策略切分
      *
      * @param filePath 文件路径
      * @param strategy 切分策略
-     * @return 文本块列表
+     * @return 切分结果（含完整文本和 embedding 文本）
      */
-    public List<String> readAndSplit(String filePath, SplitStrategy strategy) throws IOException {
+    public SplitResult readAndSplit(String filePath, SplitStrategy strategy) throws IOException {
         String content = readMarkdown(filePath);
         return switch (strategy) {
             case FIXED_SIZE -> splitByFixedSize(content, DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP_SIZE);
@@ -83,28 +93,36 @@ public class MarkdownDocumentService {
 
     /**
      * 固定大小切分（带重叠）
+     * chunks 包含 overlap 上下文，embeddingTexts 只包含当前窗口核心内容
      */
-    private List<String> splitByFixedSize(String text, int chunkSize, int overlapSize) {
+    private SplitResult splitByFixedSize(String text, int chunkSize, int overlapSize) {
         List<String> chunks = new ArrayList<>();
+        List<String> embeddingTexts = new ArrayList<>();
         int start = 0;
         while (start < text.length()) {
             int end = Math.min(start + chunkSize, text.length());
             String chunk = text.substring(start, end).trim();
             if (!chunk.isEmpty()) {
                 chunks.add(chunk);
+                // embedding 文本：去掉与上一块重叠的部分
+                int embeddingStart = (start == 0) ? 0 : overlapSize;
+                String embeddingText = chunk.length() > embeddingStart
+                        ? chunk.substring(embeddingStart).trim()
+                        : chunk;
+                embeddingTexts.add(embeddingText);
             }
             start += chunkSize - overlapSize;
         }
         log.info("固定大小切分完成，共 {} 个块（chunkSize={}, overlap={}）", chunks.size(), chunkSize, overlapSize);
-        return chunks;
+        return new SplitResult(chunks, embeddingTexts);
     }
 
     /**
      * 按标题切分（按 # 标题行分割）
-     * 每个标题及其下方内容作为一个块
+     * chunks 含 overlap 上下文，embeddingTexts 只含当前标题下的原始内容
      */
-    private List<String> splitByHeading(String text) {
-        List<String> chunks = new ArrayList<>();
+    private SplitResult splitByHeading(String text) {
+        List<String> rawChunks = new ArrayList<>();
         String[] lines = text.split("\n");
         StringBuilder currentChunk = new StringBuilder();
 
@@ -113,7 +131,7 @@ public class MarkdownDocumentService {
             if (line.matches("^#{1,6}\\s+.*") && !currentChunk.isEmpty()) {
                 String chunk = currentChunk.toString().trim();
                 if (!chunk.isEmpty()) {
-                    chunks.add(chunk);
+                    rawChunks.add(chunk);
                 }
                 currentChunk = new StringBuilder();
             }
@@ -124,25 +142,57 @@ public class MarkdownDocumentService {
         if (!currentChunk.isEmpty()) {
             String chunk = currentChunk.toString().trim();
             if (!chunk.isEmpty()) {
-                chunks.add(chunk);
+                rawChunks.add(chunk);
             }
         }
 
-        log.info("按标题切分完成，共 {} 个块", chunks.size());
-        return chunks;
+        // embeddingTexts 用原始切分内容（不含 overlap）
+        List<String> embeddingTexts = new ArrayList<>(rawChunks);
+        // chunks 添加 overlap 上下文
+        List<String> chunks = addOverlap(rawChunks, DEFAULT_OVERLAP_SIZE);
+
+        log.info("按标题切分完成，共 {} 个块（overlap={}）", chunks.size(), DEFAULT_OVERLAP_SIZE);
+        return new SplitResult(chunks, embeddingTexts);
     }
 
     /**
      * 按段落切分（按空行分隔）
+     * chunks 含 overlap 上下文，embeddingTexts 只含当前段落原始内容
      */
-    private List<String> splitByParagraph(String text) {
+    private SplitResult splitByParagraph(String text) {
         String[] paragraphs = text.split("\n\\s*\n");
-        List<String> chunks = Arrays.stream(paragraphs)
+        List<String> rawChunks = Arrays.stream(paragraphs)
                 .map(String::trim)
                 .filter(p -> !p.isEmpty())
                 .collect(Collectors.toList());
-        log.info("按段落切分完成，共 {} 个块", chunks.size());
-        return chunks;
+
+        // embeddingTexts 用原始切分内容（不含 overlap）
+        List<String> embeddingTexts = new ArrayList<>(rawChunks);
+        // chunks 添加 overlap 上下文
+        List<String> chunks = addOverlap(rawChunks, DEFAULT_OVERLAP_SIZE);
+
+        log.info("按段落切分完成，共 {} 个块（overlap={}）", chunks.size(), DEFAULT_OVERLAP_SIZE);
+        return new SplitResult(chunks, embeddingTexts);
+    }
+
+    /**
+     * 为已切分的块添加重叠：将上一块末尾的 overlapSize 个字符追加到下一块开头
+     */
+    private List<String> addOverlap(List<String> rawChunks, int overlapSize) {
+        if (rawChunks.size() <= 1) {
+            return rawChunks;
+        }
+        List<String> result = new ArrayList<>();
+        result.add(rawChunks.get(0));
+
+        for (int i = 1; i < rawChunks.size(); i++) {
+            String prevChunk = rawChunks.get(i - 1);
+            String overlapText = prevChunk.length() > overlapSize
+                    ? prevChunk.substring(prevChunk.length() - overlapSize)
+                    : prevChunk;
+            result.add(overlapText + "\n" + rawChunks.get(i));
+        }
+        return result;
     }
 
     /**

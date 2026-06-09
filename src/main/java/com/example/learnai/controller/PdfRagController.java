@@ -3,6 +3,7 @@ package com.example.learnai.controller;
 import com.example.learnai.agent.ChatModelFactory;
 import com.example.learnai.rag.EsVectorStoreService;
 import com.example.learnai.rag.MarkdownDocumentService;
+import com.example.learnai.rag.MarkdownDocumentService.SplitResult;
 import com.example.learnai.rag.MarkdownDocumentService.SplitStrategy;
 import com.example.learnai.rag.PdfDocumentService;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +54,7 @@ public class PdfRagController {
         Map<String, Object> result = new HashMap<>();
         try {
             // 1. 读取 Markdown 并按指定策略切分
-            List<String> chunks = markdownDocumentService.readAndSplit(filePath, splitStrategy);
+            SplitResult splitResult = markdownDocumentService.readAndSplit(filePath, splitStrategy);
 
             // 2. 提取文件名作为 source 标识
             String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
@@ -61,13 +62,13 @@ public class PdfRagController {
             // 3. 根据切分策略确定写入的 ES 索引
             String indexName = markdownDocumentService.getIndexName(splitStrategy);
 
-            // 4. 存入 ES
-            esVectorStoreService.storeDocuments(chunks, fileName, indexName);
+            // 4. 存入 ES（embedding 使用不含 overlap 的文本，存储使用含 overlap 的完整文本）
+            esVectorStoreService.storeDocuments(splitResult.chunks(), splitResult.embeddingTexts(), fileName, indexName);
 
             result.put("success", true);
             result.put("message", "Markdown 已成功入库");
             result.put("fileName", fileName);
-            result.put("chunkCount", chunks.size());
+            result.put("chunkCount", splitResult.chunks().size());
             result.put("splitStrategy", splitStrategy.name());
             result.put("indexName", indexName);
         } catch (IOException e) {
@@ -88,14 +89,18 @@ public class PdfRagController {
     @GetMapping("/chat")
     public Map<String, Object> chat(
             @RequestParam("query") String query,
-            @RequestParam(value = "topK", defaultValue = "3") int topK) {
+            @RequestParam(value = "topK", defaultValue = "3") int topK,
+            @RequestParam(value = "splitStrategy", defaultValue = "FIXED_SIZE") SplitStrategy splitStrategy) {
         Map<String, Object> result = new HashMap<>();
         try {
-            // 1. 从 ES 向量库检索相关段落
-            List<String> relevantDocs = esVectorStoreService.search(query, topK);
+            // 1. 根据切分策略确定对应的 ES 索引
+            String indexName = markdownDocumentService.getIndexName(splitStrategy);
+
+            // 2. 从对应索引检索相关段落
+            List<String> relevantDocs = esVectorStoreService.search(query, topK, indexName);
             String context = relevantDocs.stream().collect(Collectors.joining("\n\n---\n\n"));
 
-            // 2. 构造 RAG prompt
+            // 3. 构造 RAG prompt
             String prompt = """
                     你是一个智能文档助手，请根据以下参考文档内容回答用户的问题。
                     如果文档中没有相关信息，请如实告知。
@@ -107,7 +112,7 @@ public class PdfRagController {
                     %s
                     """.formatted(context, query);
 
-            // 3. 调用 LLM 生成回答
+            // 4. 调用 LLM 生成回答
             String answer = chatModelFactory.getChatClient("deepSeekV4ProChatClient")
                     .prompt()
                     .user(prompt)
@@ -131,10 +136,12 @@ public class PdfRagController {
     @GetMapping("/search")
     public Map<String, Object> search(
             @RequestParam("query") String query,
-            @RequestParam(value = "topK", defaultValue = "5") int topK) {
+            @RequestParam(value = "topK", defaultValue = "5") int topK,
+            @RequestParam(value = "splitStrategy", defaultValue = "FIXED_SIZE") SplitStrategy splitStrategy) {
         Map<String, Object> result = new HashMap<>();
         try {
-            List<String> docs = esVectorStoreService.search(query, topK);
+            String indexName = markdownDocumentService.getIndexName(splitStrategy);
+            List<String> docs = esVectorStoreService.search(query, topK, indexName);
             result.put("success", true);
             result.put("results", docs);
             result.put("count", docs.size());

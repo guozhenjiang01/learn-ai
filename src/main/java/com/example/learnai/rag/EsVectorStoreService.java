@@ -8,12 +8,8 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
-import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
-import com.alibaba.cloud.ai.dashscope.embedding.DashScopeEmbeddingModel;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -30,23 +26,13 @@ import java.util.*;
 public class EsVectorStoreService {
 
     private static final String DEFAULT_INDEX = "pdf_vectors";
-    private static final int VECTOR_DIMS = 1536;
+    private static final int VECTOR_DIMS = 2048;
 
     @Autowired
     private ElasticsearchClient esClient;
 
-    @Value("${spring.ai.dashscope.api-key}")
-    private String dashScopeApiKey;
-
-    private DashScopeEmbeddingModel embeddingModel;
-
-    @PostConstruct
-    public void init() {
-        DashScopeApi dashScopeApi = DashScopeApi.builder()
-                .apiKey(dashScopeApiKey)
-                .build();
-        embeddingModel = new DashScopeEmbeddingModel(dashScopeApi);
-    }
+    @Autowired
+    private ZhipuEmbeddingService zhipuEmbeddingService;
 
     /**
      * 创建 ES 索引（带 dense_vector 字段用于向量检索）
@@ -77,26 +63,27 @@ public class EsVectorStoreService {
     /**
      * 将文本块列表写入 ES（自动生成向量）
      *
-     * @param chunks    文本块列表
-     * @param source    来源标识（如文件名）
-     * @param indexName 索引名
+     * @param chunks         文本块列表（含 overlap 上下文，存储到 ES 中）
+     * @param embeddingTexts 用于生成 embedding 的文本（不含 overlap）
+     * @param source         来源标识（如文件名）
+     * @param indexName      索引名
      */
-    public void storeDocuments(List<String> chunks, String source, String indexName) throws IOException {
+    public void storeDocuments(List<String> chunks, List<String> embeddingTexts, String source, String indexName) throws IOException {
         createIndexIfNotExists(indexName);
 
-        // 批量生成向量（每次最多25个，防止API限流）
+        // 批量生成向量（使用不含 overlap 的文本）
         int batchSize = 25;
         List<float[]> allEmbeddings = new ArrayList<>();
 
-        for (int i = 0; i < chunks.size(); i += batchSize) {
-            int end = Math.min(i + batchSize, chunks.size());
-            List<String> batch = chunks.subList(i, end);
-            List<float[]> batchEmbeddings = embeddingModel.embed(batch);
+        for (int i = 0; i < embeddingTexts.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, embeddingTexts.size());
+            List<String> batch = embeddingTexts.subList(i, end);
+            List<float[]> batchEmbeddings = zhipuEmbeddingService.embed(batch);
             allEmbeddings.addAll(batchEmbeddings);
-            log.info("已生成向量: {}/{}", allEmbeddings.size(), chunks.size());
+            log.info("已生成向量: {}/{}", allEmbeddings.size(), embeddingTexts.size());
         }
 
-        // 批量写入 ES
+        // 批量写入 ES（存储含 overlap 的完整文本）
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         for (int i = 0; i < chunks.size(); i++) {
             final int idx = i;
@@ -131,10 +118,17 @@ public class EsVectorStoreService {
     }
 
     /**
+     * 将文本块列表写入 ES（embedding 和存储使用相同文本）
+     */
+    public void storeDocuments(List<String> chunks, String source, String indexName) throws IOException {
+        storeDocuments(chunks, chunks, source, indexName);
+    }
+
+    /**
      * 将文本块列表写入默认索引
      */
     public void storeDocuments(List<String> chunks, String source) throws IOException {
-        storeDocuments(chunks, source, DEFAULT_INDEX);
+        storeDocuments(chunks, chunks, source, DEFAULT_INDEX);
     }
 
     /**
@@ -158,7 +152,7 @@ public class EsVectorStoreService {
      */
     public List<String> search(String query, int topK, String indexName) throws IOException {
         // 生成查询向量
-        List<float[]> queryEmbeddings = embeddingModel.embed(List.of(query));
+        List<float[]> queryEmbeddings = zhipuEmbeddingService.embed(List.of(query));
         float[] queryVector = queryEmbeddings.get(0);
 
         // 使用 KNN 向量搜索

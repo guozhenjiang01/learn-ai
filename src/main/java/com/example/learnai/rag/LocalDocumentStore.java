@@ -1,9 +1,8 @@
 package com.example.learnai.rag;
 
-import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
-import com.alibaba.cloud.ai.dashscope.embedding.DashScopeEmbeddingModel;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -27,26 +26,22 @@ public class LocalDocumentStore {
 
     private final List<String> chunks = new ArrayList<>();
     private final List<float[]> chunkEmbeddings = new ArrayList<>();
-    private DashScopeEmbeddingModel embeddingModel;
+
+    @Autowired
+    private ZhipuEmbeddingService zhipuEmbeddingService;
 
     @PostConstruct
     public void init() {
-        // 初始化 embedding 模型，复用 DashScope API
-        DashScopeApi dashScopeApi = DashScopeApi.builder()
-                .apiKey("sk-3566bb7ecf20404ba9fbbd16db1ca564")
-                .build();
-        embeddingModel = new DashScopeEmbeddingModel(dashScopeApi);
-
         try {
             String content = Files.readString(Path.of(FILE_PATH), StandardCharsets.UTF_8);
             List<String> splitChunks = splitByHeading(content);
             chunks.addAll(splitChunks);
 
-            // 对所有段落计算向量
-            List<float[]> embeddings = embeddingModel.embed(chunks);
+            // 使用智谱 embedding-3 模型对所有段落计算向量
+            List<float[]> embeddings = zhipuEmbeddingService.embed(chunks);
             chunkEmbeddings.addAll(embeddings);
 
-            log.info("文档加载完成，共切分为 {} 个段落，已生成向量", chunks.size());
+            log.info("文档加载完成，共切分为 {} 个段落，已生成向量（智谱 embedding-3）", chunks.size());
         } catch (IOException e) {
             log.error("读取文档失败: {}", FILE_PATH, e);
         }
@@ -78,23 +73,28 @@ public class LocalDocumentStore {
      * 基于向量语义相似度检索相关段落
      */
     public List<String> search(String query, int topK) {
-        // 计算 query 的向量
-        List<float[]> queryEmbeddings = embeddingModel.embed(List.of(query));
-        float[] queryVec = queryEmbeddings.get(0);
+        try {
+            // 使用智谱计算 query 的向量
+            List<float[]> queryEmbeddings = zhipuEmbeddingService.embed(List.of(query));
+            float[] queryVec = queryEmbeddings.get(0);
 
-        // 计算与每个段落的余弦相似度，排序取 topK
-        List<int[]> scored = new ArrayList<>();
-        for (int i = 0; i < chunkEmbeddings.size(); i++) {
-            scored.add(new int[]{i});
+            // 计算与每个段落的余弦相似度，排序取 topK
+            List<int[]> scored = new ArrayList<>();
+            for (int i = 0; i < chunkEmbeddings.size(); i++) {
+                scored.add(new int[]{i});
+            }
+
+            scored.sort(Comparator.comparingDouble(a -> -cosineSimilarity(queryVec, chunkEmbeddings.get(a[0]))));
+
+            List<String> results = new ArrayList<>();
+            for (int i = 0; i < Math.min(topK, scored.size()); i++) {
+                results.add(chunks.get(scored.get(i)[0]));
+            }
+            return results;
+        } catch (IOException e) {
+            log.error("搜索时生成向量失败", e);
+            return List.of();
         }
-
-        scored.sort(Comparator.comparingDouble(a -> -cosineSimilarity(queryVec, chunkEmbeddings.get(a[0]))));
-
-        List<String> results = new ArrayList<>();
-        for (int i = 0; i < Math.min(topK, scored.size()); i++) {
-            results.add(chunks.get(scored.get(i)[0]));
-        }
-        return results;
     }
 
     /**
