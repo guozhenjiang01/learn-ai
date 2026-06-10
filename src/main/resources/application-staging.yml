@@ -1,0 +1,7 @@
+# 测试环境
+server:
+  port: 8080
+
+file:
+  upload:
+    path: /home/ubuntu/learn-ai/uploads-staging

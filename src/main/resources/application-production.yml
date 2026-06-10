@@ -1,0 +1,7 @@
+# 线上环境
+server:
+  port: 8081
+
+file:
+  upload:
+    path: /home/ubuntu/learn-ai/uploads-production

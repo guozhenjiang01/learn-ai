@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -26,10 +27,13 @@ public class ChatModelFactory {
     private static final ConcurrentHashMap<String, ChatClient> chatClientMap = new ConcurrentHashMap<>();
 
 
+    @Value("${deepseek.api-key}")
+    private String apiKey;
+
     @PostConstruct
     public void init() {
         DeepSeekApi deepSeekApi = DeepSeekApi.builder()
-                .apiKey("sk-e5e21f39aa874bcd8d672a3ecfc90a4c")
+                .apiKey(apiKey)
                 .build();
 
         ChatModel deepSeekModel = DeepSeekChatModel.builder()

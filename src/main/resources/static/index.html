@@ -1,110 +1,1100 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 问答助手</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; background: #f5f5f5; }
-        .header { background: #4a90d9; color: white; padding: 16px; text-align: center; font-size: 18px; font-weight: 500; }
-        .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-        .message { max-width: 75%; padding: 12px 16px; border-radius: 16px; line-height: 1.5; font-size: 15px; white-space: pre-wrap; word-break: break-word; }
-        .message.user { align-self: flex-end; background: #4a90d9; color: white; border-bottom-right-radius: 4px; }
-        .message.bot { align-self: flex-start; background: white; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .message.loading { color: #999; }
-        .empty-hint { flex: 1; display: flex; align-items: center; justify-content: center; color: #999; font-size: 16px; }
-        .input-area { display: flex; padding: 12px 16px; background: white; border-top: 1px solid #e0e0e0; gap: 10px; }
-        .input-area input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 20px; font-size: 15px; outline: none; }
-        .input-area input:focus { border-color: #4a90d9; }
-        .input-area button { padding: 10px 20px; background: #4a90d9; color: white; border: none; border-radius: 20px; font-size: 15px; cursor: pointer; }
-        .input-area button:hover { background: #3a7bc8; }
-        .input-area button:disabled { background: #ccc; cursor: not-allowed; }
-        @keyframes dot-pulse { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
-        .typing-dots span { animation: dot-pulse 1.4s infinite; }
-        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的玩具</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+<style>
+/* ===== Dragon Ball Theme ===== */
+:root {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #21262d;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text2: #8b949e;
+  --text3: #484f58;
+  --accent: #f77f00;      /* DBZ Orange */
+  --accent2: #fc9e2d;     /* Lighter orange */
+  --accent-glow: #f77f0040;
+  --blue: #1e90ff;        /* Goku Blue */
+  --green: #3fb950;
+  --red: #f85149;
+  --purple: #a371f7;
+  --star: #e63946;        /* Dragon Ball star red */
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== Background star particles ===== */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.15;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, var(--accent), transparent),
+    radial-gradient(1px 1px at 85% 10%, var(--accent), transparent),
+    radial-gradient(1px 1px at 25% 75%, var(--accent), transparent),
+    radial-gradient(1px 1px at 65% 85%, var(--accent), transparent),
+    radial-gradient(1px 1px at 45% 20%, var(--star), transparent),
+    radial-gradient(1px 1px at 90% 60%, var(--star), transparent),
+    radial-gradient(1px 1px at 15% 55%, var(--star), transparent),
+    radial-gradient(2px 2px at 5% 90%, var(--accent2), transparent),
+    radial-gradient(2px 2px at 95% 35%, var(--accent2), transparent),
+    radial-gradient(1px 1px at 55% 95%, var(--accent), transparent),
+    radial-gradient(1px 1px at 35% 5%, var(--accent), transparent),
+    radial-gradient(1px 1px at 75% 45%, var(--star), transparent),
+    radial-gradient(1px 1px at 50% 65%, var(--accent), transparent),
+    radial-gradient(1px 1px at 20% 40%, var(--star), transparent);
+}
+
+/* ===== Topbar ===== */
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 24px;
+  background: linear-gradient(180deg, #1a1a2e 0%, var(--bg2) 100%);
+  border-bottom: 2px solid var(--accent);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+/* Dragon Ball Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.db-ball {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffb347, #f77f00 40%, #cc5200 90%);
+  position: relative;
+  box-shadow: 0 0 12px var(--accent-glow), 0 0 24px #f77f0020;
+  animation: dbPulse 3s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* Stars inside dragon ball */
+.db-ball::before {
+  content: '★';
+  position: absolute;
+  top: 4px; left: 9px;
+  font-size: 10px;
+  color: var(--star);
+  text-shadow: 0 0 3px #ff000080;
+}
+.db-ball::after {
+  content: '★★';
+  position: absolute;
+  bottom: 5px; left: 6px;
+  font-size: 10px;
+  color: var(--star);
+  letter-spacing: 2px;
+  text-shadow: 0 0 3px #ff000080;
+}
+
+@keyframes dbPulse {
+  0%, 100% { box-shadow: 0 0 12px var(--accent-glow), 0 0 24px #f77f0020; }
+  50% { box-shadow: 0 0 20px #f77f0060, 0 0 40px #f77f0030; }
+}
+
+.logo .txt { color: var(--text); }
+.logo .txt span { color: var(--accent); }
+
+.spacer { flex: 1; }
+
+/* Weather Widget */
+.user { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 16px; }
+.wx-mini { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.wx-mini:hover { color: var(--accent2); }
+.wx-mini .t { font-weight: 600; color: var(--text); }
+.user .logout { color: var(--red); cursor: pointer; font-size: 12px; }
+.user .logout:hover { text-decoration: underline; }
+.admin-badge { background: #d2992222; color: #d29922; font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-left: 4px; }
+.env-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.env-dot.staging { background: var(--accent); }
+.env-dot.production { background: var(--green); }
+
+/* Weather Popup */
+.wx-pop {
+  display: none; position: absolute; top: 48px; right: 100px;
+  background: var(--bg3); border: 1px solid var(--accent);
+  border-radius: 10px; padding: 16px; z-index: 100;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 16px var(--accent-glow);
+  min-width: 310px;
+}
+.wx-pop.show { display: block; }
+.wx-pop .city-card { background: var(--bg2); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+.wx-pop .city-card:last-child { margin-bottom: 0; }
+.wx-pop .city-card.bj { border-left: 3px solid var(--blue); }
+.wx-pop .city-card.yc { border-left: 3px solid var(--green); }
+.wx-pop .city-card h3 { font-size: 14px; margin: 0 0 8px 0; }
+.wx-pop .city-card .bj-tag { color: var(--blue); }
+.wx-pop .city-card .yc-tag { color: var(--green); }
+.wx-pop .wx-row { font-size: 13px; color: var(--text2); line-height: 1.8; }
+.wx-pop .wx-fc { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; gap: 14px; font-size: 11px; text-align: center; }
+.wx-pop .wx-fc .hi { color: var(--red); }
+.wx-pop .wx-fc .lo { color: var(--green); }
+
+/* ===== Main ===== */
+.main { flex: 1; display: flex; min-height: 0; overflow: hidden; position: relative; z-index: 1; }
+
+/* Chat */
+.chat { flex: 1; display: flex; flex-direction: column; min-width: 300px; }
+.chat-msgs { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; animation: fadeIn .3s; word-break: break-word; }
+.msg.assistant { background: var(--bg3); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.user { background: var(--accent); align-self: flex-end; border-bottom-right-radius: 4px; color: #fff; }
+.msg.system { align-self: center; font-size: 12px; color: var(--text3); }
+.msg.thinking { color: var(--text2); font-style: italic; }
+.msg.thinking::after { content: ''; animation: dots 1.5s steps(4,end) infinite; }
+@keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} 100%{content:''} }
+.msg.error { color: var(--red) !important; background: #f8514920 !important; }
+.msg .by { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.chat-input { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; flex-shrink: 0; background: var(--bg2); }
+.chat-input input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; }
+.chat-input input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.chat-input button {
+  background: linear-gradient(135deg, var(--accent), #e06a00);
+  border: none; color: #fff; padding: 10px 24px; border-radius: 8px;
+  cursor: pointer; font-size: 14px; font-weight: 700;
+  transition: all .2s;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.chat-input button:hover { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 16px #f77f0060; }
+.chat-input button:active { transform: translateY(0); }
+
+/* ===== Drag Handle ===== */
+.drag-handle {
+  width: 6px; cursor: col-resize; flex-shrink: 0;
+  background: var(--border); transition: background .2s;
+  position: relative;
+}
+.drag-handle:hover, .drag-handle.active {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+.drag-handle::after {
+  content: '⋮'; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text3); font-size: 14px;
+}
+
+/* ===== Sidebar ===== */
+.sidebar { width: 520px; min-width: 320px; max-width: 60%; border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; background: var(--bg2); }
+
+/* Sidebar Tabs */
+.sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sidebar-tabs .stab {
+  flex: 1; padding: 10px 8px; text-align: center;
+  font-size: 13px; font-weight: 600; color: var(--text3);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all .15s; user-select: none;
+}
+.sidebar-tabs .stab:hover { color: var(--accent2); }
+.sidebar-tabs .stab.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Sidebar Panels */
+.sidebar-panel { flex: 1; display: none; flex-direction: column; min-height: 0; overflow: hidden; }
+.sidebar-panel.on { display: flex; }
+
+/* Memo Form */
+.memo-form { padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.memo-form input, .memo-form textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 12px; color: var(--text);
+  font-size: 13px; outline: none; margin-bottom: 6px;
+  transition: border-color .2s;
+}
+.memo-form textarea { resize: none; height: 50px; }
+.memo-form input:focus, .memo-form textarea:focus { border-color: var(--purple); box-shadow: 0 0 0 2px #a371f720; }
+.memo-form button {
+  width: 100%; background: linear-gradient(135deg, var(--purple), #8b5cf6);
+  border: none; color: #fff; padding: 9px; border-radius: 6px;
+  cursor: pointer; font-size: 13px; font-weight: 600; transition: filter .2s;
+}
+.memo-form button:hover { filter: brightness(1.1); }
+
+/* Memo List */
+.memo-list { flex: 1; overflow-y: auto; padding: 8px 16px; }
+.memo-item { background: var(--bg3); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; position: relative; }
+.memo-item .memo-title { font-weight: 600; font-size: 14px; color: var(--text); }
+.memo-item .memo-time { font-size: 11px; color: var(--text3); margin-left: 8px; }
+.memo-item .memo-body { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.4; white-space: pre-wrap; }
+.memo-item .memo-user { font-size: 10px; color: var(--accent2); font-weight: 400; }
+.memo-item .memo-del { position: absolute; top: 8px; right: 10px; background: none; border: 1px solid var(--red); color: var(--red); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+.memo-item .memo-del:hover { background: #f8514920; }
+
+/* Hermes Chat (in sidebar tab) */
+.hermes-panel { display: flex; flex-direction: column; height: 100%; }
+
+/* ===== House News Panel ===== */
+.house-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.house-header { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text2); border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.house-header .h-refresh { font-size: 10px; color: var(--accent); cursor: pointer; margin-left: auto; }
+.house-header .h-refresh:hover { color: var(--accent2); }
+.house-list { flex: 1; overflow-y: auto; padding: 8px 10px; }
+.house-card { background: var(--bg3); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; border-left: 3px solid var(--green); transition: border-color .2s; }
+.house-card.yuci { border-left-color: var(--green); }
+.house-card.taiyuan { border-left-color: var(--blue); }
+.house-card .h-tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; display: inline-block; margin-bottom: 4px; }
+.house-card .h-tag.sale { background: #f77f0020; color: var(--accent); }
+.house-card .h-tag.rent { background: #a371f720; color: var(--purple); }
+.house-card .h-tag.news { background: #1e90ff20; color: var(--blue); }
+.house-card .h-title { font-size: 13px; font-weight: 600; color: var(--text); margin: 4px 0; line-height: 1.3; }
+.house-card .h-title a { color: inherit; text-decoration: none; }
+.house-card .h-title a:hover { color: var(--accent2); }
+.house-card .h-meta { font-size: 10px; color: var(--text3); margin-top: 4px; display: flex; gap: 8px; }
+.house-card .h-price { font-size: 15px; font-weight: 700; color: var(--red); margin-top: 4px; }
+.house-filter { display: flex; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.house-filter button { background: none; border: 1px solid var(--border); color: var(--text2); padding: 3px 10px; border-radius: 12px; cursor: pointer; font-size: 11px; transition: all .15s; }
+/* Hermes Terminal — xterm.js */
+.hermes-panel { display: flex; flex-direction: column; height: 100%; }
+.hermes-terminal {
+  flex: 1; display: flex; flex-direction: column;
+  background: #0c0c0c; overflow: hidden;
+}
+.hermes-terminal .xterm { height: 100%; padding: 4px; }
+.hermes-header {
+  padding: 5px 12px; font-size: 10px; font-weight: 600;
+  color: #8b949e; border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  background: #0a0a0a; font-family: monospace;
+}
+.hermes-header .h-reset { font-size: 9px; color: #f85149; cursor: pointer; margin-left: auto; }
+.hermes-header .h-reset:hover { color: #ff6b6b; }
+
+/* ===== Footer ===== */
+.footer {
+  padding: 5px 24px; background: var(--bg);
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text3);
+  flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  position: relative; z-index: 1;
+}
+.footer .dot { width: 6px; height: 6px; border-radius: 50%; }
+.footer .dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.footer .dot.err { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+/* Users tab — 用户管理面板 */
+.user-panel { padding: 8px 12px; overflow-y: auto; flex: 1; }
+.user-stats { display: flex; gap: 6px; padding: 6px 0 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 8px; flex-wrap: wrap; }
+.user-stats .stat { background: var(--bg3); border-radius: 6px; padding: 6px 10px; text-align: center; flex: 1; min-width: 50px; }
+.user-stats .stat .num { font-size: 16px; font-weight: 700; color: var(--accent); }
+.user-stats .stat .lbl { font-size: 10px; color: var(--text3); }
+.user-search { display: flex; gap: 6px; margin-bottom: 8px; }
+.user-search input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 5px 10px; color: var(--text); font-size: 11px; outline: none; }
+.user-search input:focus { border-color: var(--accent); }
+.user-search button { background: var(--accent); border: none; color: #0d1117; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.user-card { background: var(--bg3); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; font-size: 12px; }
+.user-card .uc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.user-card .uc-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.user-card .uc-avatar.admin-av { background: #d29922; }
+.user-card .uc-avatar.disabled-av { background: var(--text3); }
+.user-card .uc-name { font-weight: 600; color: var(--text); }
+.user-card .uc-badges { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; }
+.user-card .uc-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+.user-card .uc-badge.admin { background: #d2992220; color: #d29922; }
+.user-card .uc-badge.user { background: #1f6feb20; color: #58a6ff; }
+.user-card .uc-badge.disabled { background: #f8514920; color: var(--red); }
+.user-card .uc-badge.permanent { background: var(--accent-glow); color: var(--accent); }
+.user-card .uc-meta { font-size: 10px; color: var(--text3); margin-bottom: 4px; display: flex; gap: 12px; flex-wrap: wrap; }
+.user-card .uc-remark { font-size: 11px; color: var(--text2); font-style: italic; margin-bottom: 4px; cursor: pointer; }
+.user-card .uc-remark:hover { color: var(--accent); }
+.user-card .uc-remark.no { color: var(--text3); font-style: normal; }
+.user-card .uc-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.user-card .uc-actions button { border: 1px solid var(--border); background: none; color: var(--text2); padding: 2px 7px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: all .15s; }
+.user-card .uc-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.user-card .uc-actions button.danger:hover { border-color: var(--red); color: var(--red); }
+.user-card .uc-actions button.warn:hover { border-color: #d29922; color: #d29922; }
+.user-card .uc-actions button.ok:hover { border-color: var(--green); color: var(--green); }
+
+/* Remark edit modal */
+.remark-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.7); z-index: 300; align-items: center; justify-content: center; }
+.remark-overlay.show { display: flex; }
+.remark-box { background: var(--bg2); border: 1px solid var(--accent); border-radius: 10px; padding: 20px; width: 340px; }
+.remark-box h3 { font-size: 14px; margin-bottom: 12px; color: var(--accent); }
+.remark-box input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none; margin-bottom: 12px; }
+.remark-box input:focus { border-color: var(--accent); }
+.remark-box .rm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.remark-box button { padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.remark-box .rm-save { background: var(--accent); border: none; color: #0d1117; }
+.remark-box .rm-cancel { background: none; border: 1px solid var(--border); color: var(--text2); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* 7 Dragon Balls decoration */
+.db-decoration {
+  position: fixed; pointer-events: none; z-index: 0;
+  opacity: 0.08; font-size: 40px;
+}
+.db-d1 { top: 60px; left: 20px; animation: dbFloat 8s ease-in-out infinite; }
+.db-d2 { top: 120px; right: 50px; animation: dbFloat 10s ease-in-out 1s infinite; font-size: 30px; }
+.db-d3 { bottom: 80px; left: 40px; animation: dbFloat 9s ease-in-out 2s infinite; font-size: 35px; }
+.db-d4 { bottom: 100px; right: 30px; animation: dbFloat 11s ease-in-out 0.5s infinite; }
+.db-d5 { top: 40%; left: 10px; animation: dbFloat 7s ease-in-out 3s infinite; font-size: 25px; }
+.db-d6 { top: 35%; right: 15px; animation: dbFloat 12s ease-in-out 1.5s infinite; font-size: 28px; }
+.db-d7 { top: 70%; right: 25px; animation: dbFloat 8.5s ease-in-out 2.5s infinite; font-size: 32px; }
+
+@keyframes dbFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-8px) rotate(5deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(8px) rotate(-5deg); }
+}
+
+/* ===== Mobile Mode ===== */
+.mode-toggle {
+  font-size: 12px; color: var(--text2); cursor: pointer;
+  padding: 4px 10px; border: 1px solid var(--border);
+  border-radius: 14px; background: var(--bg3);
+  transition: all .2s; white-space: nowrap;
+  display: flex; align-items: center; gap: 4px;
+}
+.mode-toggle:hover { border-color: var(--accent); color: var(--accent2); }
+.mode-toggle.mobile-on { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 700; }
+
+/* Mobile mode layout overrides */
+body.mobile-mode .main {
+  flex-direction: column;
+}
+body.mobile-mode .chat {
+  flex: 4; min-height: 180px; min-width: 0;
+}
+body.mobile-mode .drag-handle { display: none; }
+body.mobile-mode .sidebar {
+  flex: 6; width: 100% !important; min-width: 0; max-width: 100%;
+  border-left: none; border-top: 2px solid var(--accent);
+}
+body.mobile-mode .sidebar-tabs .stab {
+  font-size: 12px; padding: 8px 6px;
+}
+body.mobile-mode .chat-input { padding: 10px 14px; }
+body.mobile-mode .chat-input input { padding: 10px 14px; font-size: 13px; }
+body.mobile-mode .chat-input button { padding: 10px 20px; font-size: 13px; }
+body.mobile-mode .hermes-terminal .xterm { font-size: 12px; }
+body.mobile-mode .memo-form input, body.mobile-mode .memo-form textarea { font-size: 13px; padding: 10px 12px; }
+body.mobile-mode .memo-form button { padding: 10px; font-size: 13px; }
+body.mobile-mode .chat-msgs { padding: 10px 14px; gap: 6px; }
+body.mobile-mode .msg { font-size: 13px; max-width: 90%; }
+body.mobile-mode .footer { display: none; }
+body.mobile-mode .topbar { padding: 6px 14px; }
+body.mobile-mode .logo { font-size: 17px; }
+body.mobile-mode .db-ball { width: 26px; height: 26px; }
+body.mobile-mode .user { font-size: 11px; gap: 8px; }
+body.mobile-mode .sidebar-panel.on { display: flex; flex-direction: column; }
+body.mobile-mode .db-decoration { display: none; }
+
+/* Mobile: hide weather popup by default, show as modal overlay */
+body.mobile-mode .wx-pop {
+  position: fixed; top: 50%; left: 50%; right: auto;
+  transform: translate(-50%, -50%); width: 92vw; max-width: 360px;
+  min-width: 0;
+}
+
+/* On very small screens, give chat a bit more room */
+@media (max-width: 400px) {
+  body.mobile-mode .chat { flex: 3.5; }
+  body.mobile-mode .sidebar { flex: 6.5; }
+}
+</style>
 </head>
 <body>
-    <div class="header">AI 问答助手</div>
-    <div class="messages" id="messages">
-        <div class="empty-hint" id="emptyHint">发送消息开始对话吧</div>
+
+<!-- Decorative Dragon Balls (subtle, low opacity) -->
+<div class="db-decoration db-d1">🔴</div>
+<div class="db-decoration db-d2">🟠</div>
+<div class="db-decoration db-d3">🟡</div>
+<div class="db-decoration db-d4">🟢</div>
+<div class="db-decoration db-d5">🔵</div>
+<div class="db-decoration db-d6">🟣</div>
+<div class="db-decoration db-d7">⚪</div>
+
+<!-- ===== Topbar ===== -->
+<div class="topbar">
+  <div class="logo">
+    <div class="db-ball"></div>
+    <span class="txt">我的<span>玩具</span></span>
+  </div>
+  <div class="spacer"></div>
+  <div class="user">
+    <span id="weatherWidget" style="cursor:pointer;" onclick="toggleWeather()">天气加载中...</span>
+    <span id="modeToggle" class="mode-toggle" onclick="toggleMode()">🖥 电脑模式</span>
+    <span id="userDisplay"></span>
+    <span class="logout" onclick="doLogout()">退出</span>
+  </div>
+</div>
+
+<!-- Weather Popup -->
+<div class="wx-pop" id="wxPop" onclick="event.stopPropagation()">
+  <div id="wxPopContent">加载中...</div>
+</div>
+
+<!-- ===== Main ===== -->
+<div class="main">
+  <!-- Chat (DeepSeek) -->
+  <div class="chat" id="chatPanel">
+    <div class="chat-msgs" id="chatMessages">
+      <div class="msg system">⚡ 对话开始 — 龙珠主题界面</div>
     </div>
-    <div class="input-area">
-        <input type="text" id="input" placeholder="输入你的问题..." autocomplete="off">
-        <button id="sendBtn" onclick="sendMessage()">发送</button>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="输入消息，Enter 发送..." onkeydown="if(event.key==='Enter')sendMsg()">
+      <button onclick="sendMsg()">💥 发送</button>
+    </div>
+  </div>
+
+  <!-- Drag Handle -->
+  <div class="drag-handle" id="dragHandle" onmousedown="startDrag(event)"></div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-tabs">
+      <div class="stab on" onclick="switchTab('memo')">📝 备忘录</div>
+      <div class="stab" onclick="switchTab('hermes')">🤖 Hermes</div>
+      <div class="stab" onclick="switchTab('house')">🏠 房产</div>
+      <div class="stab" id="stab-users" onclick="switchTab('users')" style="display:none;">👥 用户</div>
     </div>
 
-    <script>
-        const messagesEl = document.getElementById('messages');
-        const inputEl = document.getElementById('input');
-        const sendBtn = document.getElementById('sendBtn');
-        const emptyHint = document.getElementById('emptyHint');
-        let isLoading = false;
+    <!-- Memo Panel -->
+    <div class="sidebar-panel on" id="panel-memo">
+      <div class="memo-form">
+        <input type="text" id="memoTitle" placeholder="事项标题 (Enter 快速添加)" onkeydown="if(event.key==='Enter')addMemo()">
+        <textarea id="memoContent" placeholder="备注内容..."></textarea>
+        <button onclick="addMemo()">✨ 添加备忘</button>
+      </div>
+      <div class="memo-list" id="memoList">
+        <div style="color:var(--text3);text-align:center;padding:30px;font-size:13px;">加载中...</div>
+      </div>
+    </div>
 
-        inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
+    <!-- Hermes Panel -->
+    <div class="sidebar-panel" id="panel-hermes">
+      <div class="hermes-panel">
+        <div class="hermes-header">
+          💻 hermes ~ ssh terminal
+          <span class="h-reset" onclick="reconnectTerminal()">↺ reconnect</span>
+        </div>
+        <div class="hermes-terminal">
+          <div id="terminalContainer" style="flex:1;padding:4px;"></div>
+        </div>
+      </div>
+    </div>
 
-        function addMessage(text, type) {
-            if (emptyHint) emptyHint.remove();
-            const div = document.createElement('div');
-            div.className = `message ${type}`;
-            div.textContent = text;
-            messagesEl.appendChild(div);
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-            return div;
+    <!-- Users Panel (admin only) -->
+    <div class="sidebar-panel" id="panel-users">
+      <div style="padding:8px 12px;font-size:13px;font-weight:600;color:var(--accent);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+        👥 用户管理
+        <span id="userStatsBar" style="font-size:10px;color:var(--text3);margin-left:auto;"></span>
+      </div>
+      <div class="user-panel">
+        <div class="user-search">
+          <input type="text" id="userSearch" placeholder="🔍 搜索用户名..." onkeydown="if(event.key==='Enter')searchUsers()" oninput="if(this.value==='')loadUserList()">
+          <button onclick="searchUsers()">搜索</button>
+        </div>
+        <div id="userList">
+          <div style="color:var(--text3);text-align:center;padding:20px;font-size:13px;">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- House Panel -->
+    <div class="sidebar-panel" id="panel-house">
+      <div class="house-panel">
+        <div class="house-header">
+          🏠 榆次 & 太原房产
+          <span class="h-refresh" onclick="loadHouseNews()">🔄 刷新</span>
+        </div>
+        <div class="house-filter">
+          <button class="on" onclick="filterHouse('all',this)">全部</button>
+          <button onclick="filterHouse('sale',this)">💰 卖房</button>
+          <button onclick="filterHouse('rent',this)">🏠 租房</button>
+          <button onclick="filterHouse('news',this)">📰 新闻</button>
+        </div>
+        <div class="house-list" id="houseList">
+          <div style="color:var(--text3);text-align:center;padding:30px;font-size:13px;">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remark Edit Modal -->
+    <div class="remark-overlay" id="remarkOverlay" onclick="closeRemark()">
+      <div class="remark-box" onclick="event.stopPropagation()">
+        <h3>✏️ 编辑备注</h3>
+        <input type="text" id="remarkInput" placeholder="输入备注信息...">
+        <div class="rm-actions">
+          <button class="rm-cancel" onclick="closeRemark()">取消</button>
+          <button class="rm-save" onclick="saveRemark()">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Footer ===== -->
+<div class="footer">
+  <span>后端</span><span class="dot" id="dotBackend"></span>
+  <span id="footerPort">8080</span>
+  <span style="margin-left:auto;"></span>
+  <span>DeepSeek 余额：</span><span id="dsBalance" style="color:var(--text2);">加载中...</span>
+</div>
+
+<script src="memo.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script>
+// ===== Auth & State =====
+const token = localStorage.getItem('token');
+const username = localStorage.getItem('username');
+const role = localStorage.getItem('role');
+const isAdmin = localStorage.getItem('isAdmin') === '1' || localStorage.getItem('role') === 'admin';
+if (!token) { window.location.href = '/login.html'; }
+
+document.getElementById('userDisplay').innerHTML = '👤 ' + username +
+  (isAdmin ? ' <span class="admin-badge">超管</span>' : '');
+
+// Admin-only: show users tab
+if (isAdmin) {
+  var su = document.getElementById('stab-users');
+  if (su) { su.style.display = ''; su.textContent = '👥 用户'; }
+  loadUserList();
+}
+
+function doLogout() {
+  fetch('/user/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+// ===== Mobile / Desktop Mode Toggle =====
+function toggleMode() {
+  var isMobile = document.body.classList.toggle('mobile-mode');
+  var btn = document.getElementById('modeToggle');
+  if (isMobile) {
+    btn.textContent = '📱 手机模式';
+    btn.classList.add('mobile-on');
+    localStorage.setItem('viewMode', 'mobile');
+  } else {
+    btn.textContent = '🖥 电脑模式';
+    btn.classList.remove('mobile-on');
+    localStorage.setItem('viewMode', 'desktop');
+  }
+}
+
+function initViewMode() {
+  var saved = localStorage.getItem('viewMode');
+  if (saved === 'mobile') {
+    document.body.classList.add('mobile-mode');
+    var btn = document.getElementById('modeToggle');
+    btn.textContent = '📱 手机模式';
+    btn.classList.add('mobile-on');
+  }
+}
+
+function authHeaders() { return { 'Authorization': 'Bearer ' + token }; }
+
+// ===== Dynamic Config =====
+let PORT = 8080;
+let envProfile = 'staging';
+function api(path) { return window.location.origin.replace(/:\d+$/, ':' + PORT) + path; }
+
+async function initEnv() {
+  try {
+    const r = await fetch('/api/env');
+    const env = await r.json();
+    if (env.profile) {
+      envProfile = env.profile;
+      document.title = '我的玩具 · ' + (envProfile === 'production' ? '线上' : '测试');
+    }
+    if (env.port) {
+      PORT = env.port;
+      document.getElementById('footerPort').textContent = PORT;
+    }
+    document.getElementById('footerPort').style.color = envProfile === 'production' ? 'var(--green)' : 'var(--accent)';
+  } catch(e) { console.log('env load failed, using defaults'); }
+}
+
+// ===== Drag to Resize Sidebar =====
+let isDragging = false;
+const sidebar = document.getElementById('sidebar');
+const dragHandle = document.getElementById('dragHandle');
+const chatPanel = document.getElementById('chatPanel');
+
+function startDrag(e) {
+  isDragging = true;
+  dragHandle.classList.add('active');
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+}
+
+document.addEventListener('mousemove', function(e) {
+  if (!isDragging) return;
+  const mainRect = document.querySelector('.main').getBoundingClientRect();
+  const newWidth = mainRect.right - e.clientX;
+  if (newWidth >= 280 && newWidth <= mainRect.width * 0.65) {
+    sidebar.style.width = newWidth + 'px';
+  }
+});
+
+document.addEventListener('mouseup', function() {
+  if (!isDragging) return;
+  isDragging = false;
+  dragHandle.classList.remove('active');
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  if (termFit) try { termFit.fit(); } catch(e) {}
+});
+
+// ===== Sidebar Tab Switch =====
+function switchTab(name) {
+  document.querySelectorAll('.stab').forEach(function(el) { el.classList.remove('on'); });
+  document.querySelectorAll('.sidebar-panel').forEach(function(el) { el.classList.remove('on'); });
+
+  var stabs = document.querySelectorAll('.stab');
+  for (var i = 0; i < stabs.length; i++) {
+    if (stabs[i].getAttribute('onclick') && stabs[i].getAttribute('onclick').indexOf("'" + name + "'") !== -1) {
+      stabs[i].classList.add('on');
+      break;
+    }
+  }
+  document.getElementById('panel-' + name).classList.add('on');
+  if (name === 'hermes') initTerminal();
+}
+
+// ===== Memo (from memo.js, consolidated) =====
+// memo.js uses PORT from this scope now
+
+// ===== Chat (DeepSeek) =====
+const cm = document.getElementById('chatMessages');
+const ci = document.getElementById('chatInput');
+
+async function sendMsg() {
+  const text = ci.value.trim(); if (!text) return;
+  addMsg('user', text); ci.value = '';
+  const thinking = addMsg('assistant', '⏳ 思考中...', 'thinking');
+  try {
+    const r = await fetch(api('/chat/deepSeekV4Pro/stream?message=' + encodeURIComponent(text)), { headers: authHeaders() });
+    if (r.status === 401) { doLogout(); return; }
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let full = '', first = true;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value,{stream:true}).split('\n')) {
+        if (line.startsWith('data:')) {
+          const d = line.slice(5).trim();
+          if (d) { if (first) { thinking.textContent = ''; first = false; } full += d; thinking.textContent = full; }
         }
+      }
+    }
+    if (first) thinking.textContent = '(无响应)';
+    thinking.classList.remove('thinking');
+  } catch(e) {
+    thinking.textContent = '❌ 连接失败';
+    thinking.classList.add('error');
+  }
+  cm.scrollTop = cm.scrollHeight;
+}
 
-        function addLoadingMessage() {
-            if (emptyHint) emptyHint.remove();
-            const div = document.createElement('div');
-            div.className = 'message bot loading';
-            div.id = 'loadingMsg';
-            div.innerHTML = '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span> 思考中';
-            messagesEl.appendChild(div);
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-        }
+function addMsg(role, text, cls, by) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role + (cls ? ' ' + cls : '');
+  div.innerHTML = (by ? '<div class="by">' + by + '</div>' : '') + text.replace(/</g,'&lt;');
+  cm.appendChild(div);
+  cm.scrollTop = cm.scrollHeight;
+  return div;
+}
 
-        function removeLoadingMessage() {
-            const el = document.getElementById('loadingMsg');
-            if (el) el.remove();
-        }
+async function loadHistory() {
+  try {
+    const r = await fetch(api('/chat/history'), { headers: authHeaders() });
+    if (!r.ok) return;
+    const msgs = await r.json();
+    cm.innerHTML = '<div class="msg system">⚡ 对话开始 — 龙珠主题界面</div>';
+    for (const m of msgs) addMsg(m.role, m.content, '', m.username !== username ? m.username : '');
+  } catch(e) {}
+}
 
-        async function sendMessage() {
-            const text = inputEl.value.trim();
-            if (!text || isLoading) return;
+// ===== Weather =====
+const WX = {0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',51:'🌧',61:'🌧',71:'❄️',80:'🌦',95:'⛈'};
+const WXN = {0:'晴',1:'少云',2:'多云',3:'阴',45:'雾',51:'小雨',61:'中雨',71:'小雪',80:'阵雨',95:'雷暴'};
 
-            inputEl.value = '';
-            isLoading = true;
-            sendBtn.disabled = true;
+let wxData = [];
 
-            addMessage(text, 'user');
-            addLoadingMessage();
+async function loadWeather() {
+  try {
+    const r = await fetch('/weather');
+    wxData = await r.json();
+    document.getElementById('weatherWidget').innerHTML = wxData.map(c => {
+      const cur = c.data.current;
+      return '<span class="wx-mini">'+(c.name==='北京'?'🏙':'🏡')+' '+c.name+' '+WX[cur.weather_code]+' <span class="t">'+Math.round(cur.temperature_2m)+'°</span></span>';
+    }).join(' <span style="color:var(--border);">|</span> ');
+    updateWxPop();
+  } catch(e) {}
+}
 
-            try {
-                const response = await fetch(`/chat/deepSeekV4Pro?message=${encodeURIComponent(text)}`);
-                removeLoadingMessage();
+function updateWxPop() {
+  document.getElementById('wxPopContent').innerHTML = wxData.map(c => {
+    const cur = c.data.current, d = c.data.daily;
+    const isBj = c.name === '北京';
+    const tag = isBj ? 'bj' : 'yc';
+    const fc = d.time.slice(0,3).map((t,i) => {
+      const day = ['日','一','二','三','四','五','六'][new Date(t).getDay()];
+      return '<div><div>周'+day+'</div><div>'+(WX[d.weather_code[i]]||'')+'</div><div class="hi">↑'+Math.round(d.temperature_2m_max[i])+'°</div><div class="lo">↓'+Math.round(d.temperature_2m_min[i])+'°</div></div>';
+    }).join('');
+    return '<div class="city-card '+tag+'"><h3><span class="'+tag+'-tag">'+(isBj?'🔵 北京':'🟢 榆次')+'</span></h3>'+
+      '<div class="wx-row">🌡 温度：'+Math.round(cur.temperature_2m)+'°C（体感 '+Math.round(cur.apparent_temperature||cur.temperature_2m)+'°C）</div>'+
+      '<div class="wx-row">💧 湿度：'+cur.relative_humidity_2m+'%　💨 风速：'+cur.wind_speed_10m+' km/h　🌤 '+WXN[cur.weather_code]+'</div>'+
+      '<div class="wx-fc">'+fc+'</div></div>';
+  }).join('');
+}
 
-                if (response.ok) {
-                    const reply = await response.text();
-                    addMessage(reply, 'bot');
-                } else {
-                    addMessage(`请求失败：${response.status}`, 'bot');
-                }
-            } catch (e) {
-                removeLoadingMessage();
-                addMessage(`网络错误：${e.message}`, 'bot');
-            }
+function toggleWeather() {
+  const pop = document.getElementById('wxPop');
+  pop.classList.toggle('show');
+  if (pop.classList.contains('show')) updateWxPop();
+}
 
-            isLoading = false;
-            sendBtn.disabled = false;
-            inputEl.focus();
-        }
-    </script>
+document.addEventListener('click', e => {
+  if (!e.target.closest('#weatherWidget') && !e.target.closest('#wxPop')) {
+    document.getElementById('wxPop').classList.remove('show');
+  }
+});
+
+// ===== Hermes SSH Terminal (xterm.js) =====
+let term = null, termSocket = null, termFit = null;
+
+function initTerminal() {
+  if (term) return;
+  const container = document.getElementById('terminalContainer');
+  term = new Terminal({
+    cursorBlink: true,
+    fontSize: 13,
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+    theme: { background: '#0c0c0c', foreground: '#c0c0c0', cursor: '#3fb950' },
+    allowProposedApi: true
+  });
+  termFit = new FitAddon.FitAddon();
+  term.loadAddon(termFit);
+  term.open(container);
+  termFit.fit();
+  connectTerminal();
+
+  window.addEventListener('resize', () => { if (termFit) try { termFit.fit(); } catch(e) {} });
+}
+
+function connectTerminal() {
+  if (termSocket) { try { termSocket.close(); } catch(e) {} }
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = proto + '//' + location.host + '/hermes/terminal';
+  termSocket = new WebSocket(wsUrl);
+
+  termSocket.onopen = () => {
+    term.reset();
+    term.writeln('\x1b[1;32m✓ 已连接到 hermes 终端\x1b[0m');
+    term.writeln('');
+  };
+
+  termSocket.onmessage = (e) => { term.write(e.data); };
+  termSocket.onclose = () => { term.writeln('\r\n\x1b[1;31m✗ 连接断开\x1b[0m'); };
+  termSocket.onerror = () => { term.writeln('\r\n\x1b[1;31m✗ 连接错误\x1b[0m'); };
+
+  term.onData((data) => {
+    if (termSocket && termSocket.readyState === WebSocket.OPEN) {
+      termSocket.send(data);
+    }
+  });
+}
+
+function reconnectTerminal() {
+  connectTerminal();
+}
+
+// ===== DeepSeek Balance =====
+async function loadBalance() {
+  try {
+    const r = await fetch('/deepseek/balance');
+    const d = await r.json();
+    if (d.balance_infos) {
+      const b = d.balance_infos[0];
+      document.getElementById('dsBalance').textContent = '¥' + b.total_balance + '（充值 ¥' + b.topped_up_balance + '）';
+    }
+  } catch(e) {}
+}
+
+// ===== House News =====
+let houseData = [];
+let houseFilter = 'all';
+
+async function loadHouseNews() {
+  var list = document.getElementById('houseList');
+  list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:30px;font-size:13px;">⏳ 加载中...</div>';
+  try {
+    var r = await fetch(api('/house/news'), { headers: authHeaders() });
+    houseData = await r.json();
+    renderHouseCards();
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--red);text-align:center;padding:30px;font-size:13px;">❌ 加载失败</div>';
+  }
+}
+
+function renderHouseCards() {
+  var list = document.getElementById('houseList');
+  var filtered = houseFilter === 'all' ? houseData : houseData.filter(function(item) { return item.type === houseFilter; });
+  if (!filtered.length) {
+    list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:30px;font-size:13px;">📭 暂无数据</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(function(item) {
+    var tagCls = item.type === 'sale' ? 'sale' : (item.type === 'rent' ? 'rent' : 'news');
+    var tagText = item.type === 'sale' ? '💰 出售' : (item.type === 'rent' ? '🏠 出租' : '📰 新闻');
+    var cityCls = item.city === '榆次' ? 'yuci' : 'taiyuan';
+    var priceHtml = item.price ? '<div class="h-price">' + item.price + '</div>' : '';
+    var titleHtml = item.url ? '<a href="' + item.url + '" target="_blank">' + item.title + '</a>' : item.title;
+    return '<div class="house-card ' + cityCls + '">' +
+      '<span class="h-tag ' + tagCls + '">' + tagText + '</span>' +
+      '<span style="font-size:10px;color:var(--text3);margin-left:6px;">' + item.city + '</span>' +
+      '<div class="h-title">' + titleHtml + '</div>' +
+      (item.desc ? '<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.3;">' + item.desc + '</div>' : '') +
+      priceHtml +
+      '<div class="h-meta"><span>' + (item.source || '') + '</span><span>' + (item.time || '') + '</span></div>' +
+    '</div>';
+  }).join('');
+}
+
+function filterHouse(type, btn) {
+  houseFilter = type;
+  document.querySelectorAll('.house-filter button').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  renderHouseCards();
+}
+
+// ===== User Management (admin) =====
+let currentRemarkUserId = null;
+
+function formatTime(ts) {
+  if (!ts || ts === 0) return '—';
+  var d = new Date(ts);
+  var now = new Date();
+  var diff = now - d;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff/60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff/3600000) + '小时前';
+  if (diff < 172800000) return '昨天';
+  return d.toLocaleDateString('zh-CN');
+}
+
+async function loadUserList() {
+  try {
+    var r = await fetch('/user/list', { headers: authHeaders() });
+    var d = await r.json();
+    if (!d.success) return;
+    renderUserList(d.users);
+  } catch(e) {}
+}
+
+async function searchUsers() {
+  var kw = document.getElementById('userSearch').value.trim();
+  if (!kw) { loadUserList(); return; }
+  try {
+    var r = await fetch('/user/search?keyword=' + encodeURIComponent(kw), { headers: authHeaders() });
+    var d = await r.json();
+    if (d.success) renderUserList(d.users);
+  } catch(e) {}
+}
+
+function renderUserList(users) {
+  var list = document.getElementById('userList');
+  if (!users || !users.length) {
+    list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px;font-size:13px;">无匹配用户</div>';
+    document.getElementById('userStatsBar').textContent = '';
+    return;
+  }
+  // Stats
+  var total = users.length;
+  var admins = users.filter(function(u){ return u.role === 'admin'; }).length;
+  var disabled = users.filter(function(u){ return u.status === 'disabled'; }).length;
+  document.getElementById('userStatsBar').textContent = '共' + total + '人 | 超管' + admins + ' | 禁用' + disabled;
+
+  list.innerHTML = users.map(function(u) {
+    var isAdminUser = u.role === 'admin';
+    var initial = (u.username || '?').charAt(0).toUpperCase();
+    var avatarCls = u.status === 'disabled' ? 'disabled-av' : (isAdminUser ? 'admin-av' : '');
+    var badges = '';
+    if (isAdminUser) badges += '<span class="uc-badge admin">超管</span>';
+    else badges += '<span class="uc-badge user">用户</span>';
+    if (u.status === 'disabled') badges += '<span class="uc-badge disabled">已禁用</span>';
+    // Check if permanent admin
+    var isPermanent = ['郭振江'].indexOf(u.username) >= 0;
+    if (isPermanent && isAdminUser) badges += '<span class="uc-badge permanent">永久超管</span>';
+
+    var actions = '';
+    if (isPermanent) {
+      // 永久超管：只能备注和重置密码
+      actions = '<button onclick="editRemark(\''+u.id+'\',\''+escJs(u.remark||'')+'\')">✏️ 备注</button>' +
+                '<button class="warn" onclick="resetUserPwd(\''+u.id+'\',\''+escJs(u.username)+'\')">🔑 重置密码</button>';
+    } else if (u.status === 'disabled') {
+      actions = '<button class="ok" onclick="enableUser(\''+u.id+'\')">✅ 启用</button>';
+    } else if (isAdminUser) {
+      actions = '<button class="danger" onclick="demoteUser(\''+u.id+'\',\''+escJs(u.username)+'\')">⬇ 降级</button>' +
+                '<button onclick="editRemark(\''+u.id+'\',\''+escJs(u.remark||'')+'\')">✏️ 备注</button>' +
+                '<button class="warn" onclick="resetUserPwd(\''+u.id+'\',\''+escJs(u.username)+'\')">🔑 重置密码</button>' +
+                '<button class="danger" onclick="disableUser(\''+u.id+'\')">🚫 禁用</button>';
+    } else {
+      actions = '<button class="ok" onclick="promoteUser(\''+u.id+'\')">⬆ 升权</button>' +
+                '<button onclick="editRemark(\''+u.id+'\',\''+escJs(u.remark||'')+'\')">✏️ 备注</button>' +
+                '<button class="warn" onclick="resetUserPwd(\''+u.id+'\',\''+escJs(u.username)+'\')">🔑 重置密码</button>' +
+                '<button class="danger" onclick="disableUser(\''+u.id+'\')">🚫 禁用</button>';
+    }
+
+    return '<div class="user-card">' +
+      '<div class="uc-top">' +
+        '<div class="uc-avatar '+avatarCls+'">'+initial+'</div>' +
+        '<span class="uc-name">'+u.username+'</span>' +
+        '<div class="uc-badges">'+badges+'</div>' +
+      '</div>' +
+      '<div class="uc-meta">' +
+        '<span>📅 ' + formatTime(u.createdAt) + ' 加入</span>' +
+        '<span>🕐 上次登录 ' + formatTime(u.lastLoginAt) + '</span>' +
+      '</div>' +
+      '<div class="uc-remark'+(u.remark?'':' no')+'" onclick="editRemark(\''+u.id+'\',\''+escJs(u.remark||'')+'\')">' +
+        (u.remark ? '💬 ' + u.remark : '+ 添加备注') +
+      '</div>' +
+      '<div class="uc-actions">'+actions+'</div>' +
+    '</div>';
+  }).join('');
+}
+
+function escJs(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+// ---- Actions ----
+async function promoteUser(userId) {
+  if (!confirm('确认提升该用户为超管？')) return;
+  try {
+    var r = await fetch('/user/promote/' + userId, { method: 'POST', headers: authHeaders() });
+    var d = await r.json();
+    if (d.success) { loadUserList(); } else { alert(d.message); }
+  } catch(e) { alert('操作失败'); }
+}
+
+async function demoteUser(userId, username) {
+  if (!confirm('确认将 ' + username + ' 降级为普通用户？')) return;
+  try {
+    var r = await fetch('/user/demote/' + userId, { method: 'POST', headers: authHeaders() });
+    var d = await r.json();
+    if (d.success) { alert(d.message); loadUserList(); } else { alert(d.message); }
+  } catch(e) { alert('操作失败'); }
+}
+
+async function disableUser(userId) {
+  if (!confirm('确认禁用该用户？（将踢出所有会话）')) return;
+  try {
+    var r = await fetch('/user/disable/' + userId, { method: 'POST', headers: authHeaders() });
+    var d = await r.json();
+    if (d.success) { alert(d.message); loadUserList(); } else { alert(d.message); }
+  } catch(e) { alert('操作失败'); }
+}
+
+async function enableUser(userId) {
+  try {
+    var r = await fetch('/user/enable/' + userId, { method: 'POST', headers: authHeaders() });
+    var d = await r.json();
+    if (d.success) { alert(d.message); loadUserList(); } else { alert(d.message); }
+  } catch(e) { alert('操作失败'); }
+}
+
+function editRemark(userId, currentRemark) {
+  currentRemarkUserId = userId;
+  document.getElementById('remarkInput').value = currentRemark || '';
+  document.getElementById('remarkOverlay').classList.add('show');
+}
+
+function closeRemark() {
+  document.getElementById('remarkOverlay').classList.remove('show');
+  currentRemarkUserId = null;
+}
+
+async function saveRemark() {
+  var remark = document.getElementById('remarkInput').value.trim();
+  try {
+    var r = await fetch('/user/remark/' + currentRemarkUserId, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ remark: remark })
+    });
+    var d = await r.json();
+    if (d.success) { closeRemark(); loadUserList(); } else { alert(d.message); }
+  } catch(e) { alert('操作失败'); }
+}
+
+async function resetUserPwd(userId, username) {
+  var newPwd = prompt('为 ' + username + ' 设置新密码（至少 3 位）：');
+  if (!newPwd || newPwd.length < 3) { alert('密码至少 3 位'); return; }
+  try {
+    var r = await fetch('/user/reset-password/' + userId, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ password: newPwd })
+    });
+    var d = await r.json();
+    if (d.success) { alert('密码已重置为：' + newPwd + '（请告知用户）'); } else { alert(d.message); }
+  } catch(e) { alert('操作失败'); }
+}
+
+// ===== Health Check =====
+setInterval(async () => {
+  const dot = document.getElementById('dotBackend');
+  try {
+    await fetch('http://localhost:'+PORT+'/actuator/health', { signal: AbortSignal.timeout(3000) });
+    dot.className = 'dot ok';
+  } catch(e) { dot.className = 'dot err'; }
+}, 15000);
+
+// ===== Periodic Refresh =====
+setInterval(loadWeather, 30 * 60 * 1000);
+setInterval(loadBalance, 10 * 60 * 1000);
+
+// ===== Init =====
+initEnv().then(() => {
+  initViewMode();
+  loadWeather();
+  loadHistory();
+  loadMemos();
+  loadBalance();
+  loadHermesHistory();
+});
+</script>
 </body>
 </html>

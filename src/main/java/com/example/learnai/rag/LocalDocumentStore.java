@@ -1,14 +1,10 @@
 package com.example.learnai.rag;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -22,30 +18,11 @@ import java.util.List;
 @Component
 public class LocalDocumentStore {
 
-    private static final String FILE_PATH = "/Users/guozhenjiang9/data/quick-start.md";
-
     private final List<String> chunks = new ArrayList<>();
     private final List<float[]> chunkEmbeddings = new ArrayList<>();
 
     @Autowired
     private ZhipuEmbeddingService zhipuEmbeddingService;
-
-    @PostConstruct
-    public void init() {
-        try {
-            String content = Files.readString(Path.of(FILE_PATH), StandardCharsets.UTF_8);
-            List<String> splitChunks = splitByHeading(content);
-            chunks.addAll(splitChunks);
-
-            // 使用智谱 embedding-3 模型对所有段落计算向量
-            List<float[]> embeddings = zhipuEmbeddingService.embed(chunks);
-            chunkEmbeddings.addAll(embeddings);
-
-            log.info("文档加载完成，共切分为 {} 个段落，已生成向量（智谱 embedding-3）", chunks.size());
-        } catch (IOException e) {
-            log.error("读取文档失败: {}", FILE_PATH, e);
-        }
-    }
 
     /**
      * 按所有标题层级(#、##、###等)切分文档
