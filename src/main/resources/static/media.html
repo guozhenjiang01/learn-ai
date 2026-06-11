@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>自媒体工作台 · 我的玩具</title>
+<style>
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --border: #30363d; --text: #c9d1d9; --text2: #8b949e;
+  --orange: #f77f00; --orange2: #f78166; --green: #3fb950;
+  --red: #f85149; --blue: #58a6ff;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.topbar { background: linear-gradient(180deg, #160826 0%, #1a0a20 100%); padding: 10px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+.topbar .logo { font-size: 16px; font-weight: 700; color: var(--orange); }
+.topbar .back { color: var(--text2); text-decoration: none; font-size: 14px; }
+.topbar .back:hover { color: var(--orange); }
+.container { max-width: 900px; margin: 0 auto; padding: 16px; }
+/* sub-tabs */
+.subtabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+.subtab { padding: 8px 14px; font-size: 13px; color: var(--text2); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: all .2s; }
+.subtab:hover { color: var(--text); }
+.subtab.on { color: var(--orange); border-bottom-color: var(--orange); }
+.subtab .count { font-size: 11px; background: var(--bg3); padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+/* panels */
+.panel { display: none; }
+.panel.on { display: block; }
+/* generate form */
+.gen-form { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.gen-form h3 { font-size: 15px; margin-bottom: 12px; color: var(--orange); }
+.form-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.form-row label { font-size: 12px; color: var(--text2); min-width: 60px; line-height: 30px; }
+.form-row select, .form-row input, .form-row textarea {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 6px 10px; border-radius: 6px; font-size: 13px; flex: 1; min-width: 0;
+}
+.form-row textarea { resize: vertical; min-height: 50px; font-family: inherit; }
+.btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; border: none; font-weight: 600; transition: all .2s; }
+.btn-primary { background: var(--orange); color: #fff; }
+.btn-primary:hover { background: #e06b00; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+/* script card */
+.script-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+.script-card .sc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.script-card .sc-title { font-size: 14px; font-weight: 600; color: var(--orange); }
+.script-card .sc-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--text2); }
+.script-card .sc-tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+.script-card .sc-tag.topic { background: rgba(88,166,255,.15); color: var(--blue); }
+.script-card .sc-tag.template { background: rgba(63,185,80,.15); color: var(--green); }
+.script-card .sc-tag.draft { background: rgba(139,148,158,.15); color: var(--text2); }
+.script-card .sc-tag.scheduled { background: rgba(247,127,0,.15); color: var(--orange); }
+.script-card .sc-tag.published { background: rgba(63,185,80,.15); color: var(--green); }
+.script-card .sc-content { font-size: 12px; color: var(--text2); white-space: pre-wrap; max-height: 120px; overflow: hidden; background: var(--bg); padding: 8px; border-radius: 4px; margin: 8px 0; }
+.script-card .sc-content.expanded { max-height: none; }
+.script-card .sc-actions { display: flex; gap: 6px; margin-top: 8px; }
+/* detail modal */
+.detail-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.7); z-index: 50; padding: 20px; }
+.detail-overlay.on { display: flex; align-items: flex-start; justify-content: center; }
+.detail-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; margin-top: 40px; }
+.detail-box h3 { color: var(--orange); margin-bottom: 12px; }
+.detail-box pre { white-space: pre-wrap; font-size: 12px; color: var(--text); background: var(--bg); padding: 12px; border-radius: 6px; line-height: 1.6; }
+/* calendar */
+.cal-week { display: flex; gap: 8px; overflow-x: auto; }
+.cal-day { flex: 1; min-width: 110px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.cal-day.today { border-color: var(--orange); }
+.cal-day .day-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.cal-day .day-date { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.cal-day .day-item { font-size: 11px; padding: 4px 6px; background: rgba(247,127,0,.1); border-radius: 4px; margin-bottom: 3px; cursor: pointer; border-left: 2px solid var(--orange); }
+.cal-day .day-item.pub { border-left-color: var(--green); background: rgba(63,185,80,.1); }
+.cal-day .day-empty { font-size: 11px; color: var(--text2); font-style: italic; }
+/* filter bar */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.filter-bar select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 6px; font-size: 12px; }
+.filter-bar .f-count { font-size: 12px; color: var(--text2); }
+/* edit textarea */
+.edit-area { width: 100%; min-height: 300px; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; resize: vertical; }
+/* mobile */
+@media (max-width: 600px) {
+  .container { padding: 10px; }
+  .form-row { flex-direction: column; gap: 6px; }
+  .form-row label { min-width: auto; }
+  .cal-week { flex-wrap: nowrap; }
+  .cal-day { min-width: 90px; }
+  .detail-box { margin-top: 10px; padding: 14px; }
+}
+/* spinner */
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin .6s linear infinite; margin-right: 6px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; color: var(--text2); padding: 30px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="back">← 返回</a>
+  <span class="logo">🎬 自媒体工作台</span>
+</div>
+
+<div class="container">
+  <div class="subtabs">
+    <button class="subtab on" onclick="switchPanel('generate')">🤖 AI生成</button>
+    <button class="subtab" onclick="switchPanel('library')">📚 脚本库 <span class="count" id="libCount">0</span></button>
+    <button class="subtab" onclick="switchPanel('calendar')">📅 选题日历</button>
+  </div>
+
+  <!-- Panel 1: AI 生成 -->
+  <div class="panel on" id="panel-generate">
+    <div class="gen-form">
+      <h3>🤖 AI 脚本生成</h3>
+      <div class="form-row">
+        <label>选题分类</label>
+        <select id="genTopic">
+          <option value="通勤">🚄 通勤（周一/周五G551）</option>
+          <option value="工资">💰 工资/房奴</option>
+          <option value="老婆">👩‍🎓 北大博士老婆</option>
+          <option value="带娃">👶 周末奶爸</option>
+          <option value="大厂">🏢 大厂日常</option>
+          <option value="其他">📝 其他选题</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>脚本模板</label>
+        <select id="genTemplate">
+          <option value="周一通勤">周一通勤（立人设）</option>
+          <option value="工资到账">工资到账（引争议）</option>
+          <option value="北大老婆">北大博士老婆（秀恩爱）</option>
+          <option value="周五回家">周五回太原（最可能爆）</option>
+          <option value="其他">自由发挥</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>额外要求</label>
+        <input id="genExtra" placeholder="比如：强调两地奔波、加入孩子互动细节...">
+      </div>
+      <button class="btn btn-primary" onclick="generateScript()" id="genBtn">⚡ 生成脚本</button>
+      <div id="genResult" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <!-- Panel 2: 脚本库 -->
+  <div class="panel" id="panel-library">
+    <div class="filter-bar">
+      <select id="libTopic" onchange="loadScripts()">
+        <option value="all">全部选题</option>
+        <option value="通勤">🚄 通勤</option>
+        <option value="工资">💰 工资</option>
+        <option value="老婆">👩‍🎓 老婆</option>
+        <option value="带娃">👶 带娃</option>
+        <option value="大厂">🏢 大厂</option>
+        <option value="其他">📝 其他</option>
+      </select>
+      <select id="libStatus" onchange="loadScripts()">
+        <option value="all">全部状态</option>
+        <option value="draft">📝 草稿</option>
+        <option value="scheduled">📅 已排期</option>
+        <option value="published">✅ 已发布</option>
+      </select>
+      <span class="f-count" id="libInfo"></span>
+    </div>
+    <div id="scriptList"></div>
+  </div>
+
+  <!-- Panel 3: 选题日历 -->
+  <div class="panel" id="panel-calendar">
+    <div class="cal-week" id="calWeek"></div>
+  </div>
+</div>
+
+<!-- Detail overlay -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-box" id="detailBox" onclick="event.stopPropagation()"></div>
+</div>
+
+<script>
+const USER_ID = localStorage.getItem('userId') || '';
+const USERNAME = localStorage.getItem('username') || '';
+const TOKEN = localStorage.getItem('token') || '';
+
+function api(path, opts) {
+  const url = window.location.origin + path;
+  const headers = { 'Content-Type': 'application/json' };
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  return fetch(url, { ...opts, headers: { ...headers, ...(opts&&opts.headers||{}) } }).then(r => r.json());
+}
+
+// --- sub-tab switch ---
+function switchPanel(name) {
+  document.querySelectorAll('.subtab').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.querySelector('.subtab[onclick*="' + name + '"]').classList.add('on');
+  document.getElementById('panel-' + name).classList.add('on');
+  if (name === 'library') loadScripts();
+  if (name === 'calendar') loadCalendar();
+}
+
+// --- AI Generate ---
+function generateScript() {
+  const btn = document.getElementById('genBtn');
+  const topic = document.getElementById('genTopic').value;
+  const template = document.getElementById('genTemplate').value;
+  const extra = document.getElementById('genExtra').value;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>生成中...';
+  document.getElementById('genResult').innerHTML = '';
+
+  api('/media/generate', {
+    method: 'POST',
+    body: JSON.stringify({ topic, template, extra })
+  }).then(data => {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ 生成脚本';
+    if (data.content) {
+      document.getElementById('genResult').innerHTML = renderScriptCard(data, true);
+      document.getElementById('libCount').textContent = parseInt(document.getElementById('libCount').textContent||0) + 1;
+    } else {
+      document.getElementById('genResult').innerHTML = '<div class="empty">生成失败</div>';
+    }
+  }).catch(err => {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ 生成脚本';
+    document.getElementById('genResult').innerHTML = '<div class="empty">网络错误</div>';
+  });
+}
+
+// --- Script Library ---
+function loadScripts() {
+  const topic = document.getElementById('libTopic').value;
+  const status = document.getElementById('libStatus').value;
+  const params = 'size=100' + (topic !== 'all' ? '&topic=' + topic : '') + (status !== 'all' ? '&status=' + status : '');
+  api('/media/scripts?' + params).then(data => {
+    const list = Array.isArray(data) ? data : [];
+    document.getElementById('libCount').textContent = list.length;
+    document.getElementById('libInfo').textContent = '共 ' + list.length + ' 条';
+    const html = list.length === 0
+      ? '<div class="empty">📝 还没有脚本，去 AI 生成几个吧</div>'
+      : list.map(s => renderScriptCard(s, false)).join('');
+    document.getElementById('scriptList').innerHTML = html;
+    bindScriptActions();
+  });
+}
+
+function renderScriptCard(s, isNew) {
+  const topicClass = 'topic';
+  const templateClass = 'template';
+  const statusMap = { draft: '📝草稿', scheduled: '📅已排期', published: '✅已发布' };
+  const statusText = statusMap[s.status] || s.status;
+  const scheduledInfo = s.scheduledAt ? ' · 排期: ' + new Date(s.scheduledAt).toLocaleDateString('zh-CN') : '';
+  const pubInfo = s.publishedAt ? ' · 发布: ' + new Date(s.publishedAt).toLocaleDateString('zh-CN') : '';
+  const contentPreview = (s.content || '').substring(0, 200);
+  return `
+    <div class="script-card" data-sid="${s.id}">
+      <div class="sc-header">
+        <div>
+          <div class="sc-title">${escHtml(s.title || '未命名')}</div>
+          <div class="sc-meta">
+            <span class="sc-tag ${topicClass}">${escHtml(s.topic || '未分类')}</span>
+            <span class="sc-tag ${templateClass}">${escHtml(s.template || '自由')}</span>
+            <span class="sc-tag ${s.status}">${statusText}</span>
+            <span>${fmtTime(s.createdAt)}${scheduledInfo}${pubInfo}</span>
+          </div>
+        </div>
+      </div>
+      <div class="sc-content" onclick="this.classList.toggle('expanded')">${escHtml(contentPreview)}${(s.content||'').length > 200 ? '... (点击展开)' : ''}</div>
+      <div class="sc-actions">
+        <button class="btn btn-sm btn-outline" onclick="viewDetail('${s.id}')">📖 全文</button>
+        <button class="btn btn-sm btn-outline" onclick="editScript('${s.id}')">✏️ 编辑</button>
+        <button class="btn btn-sm btn-outline" onclick="scheduleScript('${s.id}')">📅 排期</button>
+        ${s.status !== 'published' ? `<button class="btn btn-sm btn-primary" onclick="markPublished('${s.id}')">✅ 标记发布</button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="deleteScript('${s.id}')">🗑</button>
+      </div>
+    </div>`;
+}
+
+function bindScriptActions() {
+  // actions are inline onclick, so nothing to bind
+}
+
+function viewDetail(id) {
+  const card = document.querySelector('[data-sid="' + id + '"]');
+  const title = card ? card.querySelector('.sc-title').textContent : '';
+  document.getElementById('detailBox').innerHTML = '<h3>' + escHtml(title) + '</h3><pre id="detailContent">加载中...</pre>';
+  document.getElementById('detailOverlay').classList.add('on');
+  fetch(window.location.origin + '/media/scripts/' + id, {
+    headers: TOKEN ? { 'Authorization': 'Bearer ' + TOKEN } : {}
+  }).then(r => {
+    if (!r.ok) throw new Error('not found');
+    return r.json();
+  }).then(data => {
+    document.getElementById('detailContent').textContent = data.content || '(空)';
+  }).catch(() => {
+    // fallback: try to get content from the card
+    const contentDiv = card.querySelector('.sc-content');
+    document.getElementById('detailContent').textContent = contentDiv ? contentDiv.textContent.replace('... (点击展开)', '') : '加载失败';
+  });
+}
+
+function closeDetail(e) {
+  if (e && e.target !== document.getElementById('detailOverlay')) return;
+  document.getElementById('detailOverlay').classList.remove('on');
+}
+
+function editScript(id) {
+  const card = document.querySelector('[data-sid="' + id + '"]');
+  const contentDiv = card.querySelector('.sc-content');
+  // expand content first
+  contentDiv.classList.add('expanded');
+  const fullContent = contentDiv.textContent.replace('... (点击展开)', '');
+
+  const actions = card.querySelector('.sc-actions');
+  const origActions = actions.innerHTML;
+  actions.innerHTML = `
+    <textarea class="edit-area" id="editArea_${id}">${escHtml(fullContent)}</textarea>
+    <button class="btn btn-sm btn-primary" onclick="saveEdit('${id}')">💾 保存</button>
+    <button class="btn btn-sm btn-outline" onclick="cancelEdit('${id}', '${escAttr(origActions)}')">取消</button>
+  `;
+}
+
+function saveEdit(id) {
+  const content = document.getElementById('editArea_' + id).value;
+  api('/media/scripts/' + id, {
+    method: 'PUT',
+    body: JSON.stringify({ content: content })
+  }).then(() => loadScripts());
+}
+
+function cancelEdit(id, origHtml) {
+  loadScripts(); // simpler: just reload
+}
+
+function scheduleScript(id) {
+  const date = prompt('计划发布日期（YYYY-MM-DD）：', new Date().toISOString().slice(0,10));
+  if (!date) return;
+  const ts = new Date(date + 'T08:00:00').getTime();
+  api('/media/scripts/' + id, {
+    method: 'PUT',
+    body: JSON.stringify({ status: 'scheduled', scheduledAt: ts })
+  }).then(() => {
+    loadScripts();
+    loadCalendar();
+  });
+}
+
+function markPublished(id) {
+  if (!confirm('确认标记为已发布？')) return;
+  const url = prompt('发布链接（可选）：', '');
+  const body = { status: 'published', publishedAt: Date.now() };
+  if (url) body.publishUrl = url;
+  api('/media/scripts/' + id, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  }).then(() => loadScripts());
+}
+
+function deleteScript(id) {
+  if (!confirm('确认删除？')) return;
+  api('/media/scripts/' + id, { method: 'DELETE' }).then(() => loadScripts());
+}
+
+// --- Calendar ---
+function loadCalendar() {
+  api('/media/scripts?size=100').then(data => {
+    const scripts = Array.isArray(data) ? data : [];
+    const days = [];
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1); // Monday
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const dayEnd = dayStart + 86400000;
+      const items = scripts.filter(s => s.scheduledAt && s.scheduledAt >= dayStart && s.scheduledAt < dayEnd)
+        .concat(scripts.filter(s => s.publishedAt && s.publishedAt >= dayStart && s.publishedAt < dayEnd)
+          .map(s => ({...s, _pub: true})));
+      days.push({ date: d, items, isToday: d.toDateString() === today.toDateString() });
+    }
+    document.getElementById('calWeek').innerHTML = days.map(d => `
+      <div class="cal-day${d.isToday ? ' today' : ''}">
+        <div class="day-label">${['一','二','三','四','五','六','日'][d.date.getDay()===0?6:d.date.getDay()-1]}</div>
+        <div class="day-date">${d.date.getDate()}</div>
+        ${d.items.length === 0 ? '<div class="day-empty">暂无</div>' :
+          d.items.map(s => `<div class="day-item${s._pub ? ' pub' : ''}" onclick="viewDetail('${s.id}')" title="${escAttr(s.title)}">${s._pub?'✅':''}${escHtml(s.title||'未命名').substring(0,12)}</div>`).join('')}
+      </div>`).join('');
+  });
+}
+
+// --- helpers ---
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return (s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.getMonth()+1 + '/' + d.getDate() + ' ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+
+// init
+if (!TOKEN) { document.body.innerHTML = '<div class="empty" style="margin-top:60px;">⚠ 请先<a href="/">登录</a></div>'; }
+loadScripts();
+</script>
+</body>
+</html>
