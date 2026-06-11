@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -104,27 +105,24 @@ public class TerminalSessionService {
             if (trimmed.matches("^\\d+%$")) continue;
             // 跳过 prompt 空行
             if (trimmed.matches("^[➤>]\\s*$")) continue;
-            out.append(trimmed).append("\\n");
+            out.append(trimmed).append("\n");
         }
         return out.toString().trim();
     }
 
-    /** 用AI总结内容生成10字以内标题 */
+    /** 用AI总结内容生成20字以内标题 */
     private String generateTitle(String content) {
         if (content == null || content.isBlank()) return "空会话";
         try {
-            // 取前500字符用于总结
-            String snippet = content.length() > 500 ? content.substring(0, 500) : content;
-            String prompt = "用不超过10个字总结以下AI助手对话的核心内容，只输出总结不要任何解释：\n" + snippet;
+            String snippet = content.length() > 800 ? content.substring(0, 800) : content;
+            String prompt = "用20字以内总结以下AI助手对话的核心话题，尽量短，能说清就行。只输出总结不要解释：\n" + snippet;
             String result = chatModelFactory.getChatClient("deepSeekV4ProChatClient")
                 .prompt().user(prompt).call().content();
             if (result == null || result.isBlank()) return "会话记录";
-            // 清理结果，去掉引号和多余空白
             result = result.replaceAll("[\"'\"\\s]+", "").trim();
-            if (result.length() > 10) result = result.substring(0, 10);
+            if (result.length() > 20) result = result.substring(0, 20);
             return result.isEmpty() ? "会话记录" : result;
         } catch (Exception e) {
-            // AI调用失败，回退到取第一句
             System.err.println("[Terminal] 标题生成失败，使用回退: " + e.getMessage());
             return fallbackTitle(content);
         }
@@ -136,7 +134,7 @@ public class TerminalSessionService {
             String t = line.trim();
             if (t.length() >= 3 && !t.matches("^[=#\\-━▁▂▃▄▅▆▇█*·•●○◎◉◎]+$")
                 && !t.startsWith("✓") && !t.startsWith("✗") && !t.startsWith("📋")) {
-                return t.length() <= 10 ? t : t.substring(0, 10);
+                return t.length() <= 20 ? t : t.substring(0, 20);
             }
         }
         return "会话记录";
@@ -172,7 +170,30 @@ public class TerminalSessionService {
         List<TerminalSession> list = new ArrayList<>();
         for (Hit<TerminalSession> hit : resp.hits().hits()) {
             TerminalSession s = hit.source();
-            if (s != null) { s.setId(hit.id()); list.add(s); }
+            if (s != null) {
+                s.setId(hit.id());
+                boolean needsUpdate = false;
+                // 修复旧记录：内容里存的是字面 \n 而非真换行
+                if (s.getContent() != null && s.getContent().contains("\\n") && !s.getContent().contains("\n")) {
+                    s.setContent(s.getContent().replace("\\n", "\n"));
+                    needsUpdate = true;
+                }
+                // 旧记录没标题，生成并回存
+                if ((s.getTitle() == null || s.getTitle().isBlank()) && s.getContent() != null) {
+                    s.setTitle(generateTitle(s.getContent()));
+                    needsUpdate = true;
+                }
+                if (needsUpdate) {
+                    final TerminalSession fs = s;
+                    new Thread(() -> {
+                        try {
+                            client.update(u -> u.index(INDEX).id(fs.getId())
+                                .doc(fs), TerminalSession.class);
+                        } catch (Exception ignored) {}
+                    }).start();
+                }
+                list.add(s);
+            }
         }
         return list;
     }

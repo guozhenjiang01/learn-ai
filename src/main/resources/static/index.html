@@ -283,13 +283,13 @@ body::before {
 }
 .hermes-terminal .xterm { height: 100%; padding: 4px; }
 .hermes-header {
-  padding: 5px 12px; font-size: 10px; font-weight: 600;
+  padding: 8px 12px; font-size: 13px; font-weight: 600;
   color: #8b949e; border-bottom: 1px solid #1a1a1a;
   flex-shrink: 0; display: flex; align-items: center; gap: 8px;
   background: #0a0a0a; font-family: monospace;
 }
-.hermes-header .h-reset { font-size: 9px; color: #f85149; cursor: pointer; margin-left: auto; }
-.hermes-header .h-reset:hover { color: #ff6b6b; }
+.hermes-header .h-reset { font-size: 16px; color: #f85149; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.hermes-header .h-reset:hover { color: #ff6b6b; background: rgba(248,81,73,0.1); }
 
 /* ===== Footer ===== */
 .footer {
@@ -514,8 +514,8 @@ body.mobile-mode .audit-filters select, body.mobile-mode .audit-filters input { 
 body.mobile-mode .hermes-panel { height: 100%; }
 body.mobile-mode .hermes-terminal { flex: 1; }
 body.mobile-mode .hermes-header { padding: 10px 12px; font-size: 12px; }
-body.mobile-mode .hermes-header .h-reset { font-size: 18px !important; padding: 6px 10px !important; margin-left: 4px !important; }
-body.mobile-mode #termHistBtn { font-size: 13px !important; padding: 6px 12px !important; border-radius: 12px !important; }
+body.mobile-mode .hermes-header .h-reset { font-size: 22px !important; padding: 8px 12px !important; margin-left: 4px !important; }
+body.mobile-mode #termHistBtn { font-size: 20px !important; padding: 10px 18px !important; border-radius: 16px !important; }
 /* "← 聊天" back button in hermes header on mobile */
 body.mobile-mode #hermesBackBtn { display: inline !important; }
 /* Terminal history dropdown — full width on mobile */
@@ -547,7 +547,7 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
   body.mobile-mode .mobile-tab { font-size: 9px; }
   body.mobile-mode .mobile-tab .mt-icon { font-size: 18px; }
   body.mobile-mode .hermes-header { padding: 8px 10px; font-size: 11px; }
-  body.mobile-mode #termHistBtn { font-size: 12px !important; padding: 5px 10px !important; }
+  body.mobile-mode #termHistBtn { font-size: 18px !important; padding: 10px 16px !important; }
   body.mobile-mode #termHistDrop { max-width: 300px !important; }
   body.mobile-mode #termHistFilter { padding: 6px 8px !important; }
   body.mobile-mode #termHistFilter input { font-size: 12px !important; padding: 5px 6px !important; }
@@ -639,7 +639,7 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
           💻 hermes ~ ssh terminal
           <span style="flex:1;"></span>
           <span class="h-reset" onclick="reconnectTerminal()" style="margin-right:6px;">↺</span>
-          <span id="termHistBtn" onclick="toggleTermHistory()" style="cursor:pointer;font-size:10px;color:var(--text3);background:var(--bg3);padding:2px 6px;border-radius:8px;">📋 0</span>
+          <span id="termHistBtn" onclick="toggleTermHistory()" style="cursor:pointer;font-size:18px;color:var(--text3);background:var(--bg3);padding:8px 18px;border-radius:14px;font-family:monospace;">📋 0</span>
         </div>
         <div class="hermes-terminal">
           <div id="terminalContainer" style="flex:1;padding:4px;"></div>
