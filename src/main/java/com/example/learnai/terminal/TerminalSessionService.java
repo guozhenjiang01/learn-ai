@@ -56,11 +56,13 @@ public class TerminalSessionService {
             String clean = stripAnsi(raw);
             // 截取前5000行/50万字符
             if (clean.length() > 500000) clean = clean.substring(0, 500000);
+            // 去除前导噪声（如旧版本产生的 "nn" 前缀）
+            clean = clean.replaceFirst("^\\s*nn\\s*", "");
             String[] lines = clean.split("\n");
             session.setContent(clean);
             session.setLines(lines.length);
             session.setEndedAt(System.currentTimeMillis());
-            // 生成标题：取第一句有意义的话，截10字
+            // 生成标题：取第一句有意义的话，截20字
             session.setTitle(generateTitle(clean));
             save(session);
         } catch (Exception e) {
@@ -71,19 +73,24 @@ public class TerminalSessionService {
     /** 去除 ANSI 转义序列 */
     static String stripAnsi(String text) {
         if (text == null) return "";
-        // Remove OSC sequences (title, etc.)
+        // Remove OSC sequences (title, etc.) — BEL-terminated
         text = text.replaceAll("\u001b\\][^\u0007]*\u0007", "");
+        // Remove OSC sequences — ST-terminated (ESC\)
         text = text.replaceAll("\u001b\\][^\u001b]*\u001b\\\\", "");
-        // Remove CSI sequences: ESC [ ... m (colors) and other SGR
-        text = text.replaceAll("\u001b\\[[0-9;]*[a-zA-Z]", "");
-        // Remove other ESC sequences
+        // Remove CSI sequences: ESC [ params letter
+        // params can be digits, semicolons, question marks (> for mode set)
+        text = text.replaceAll("\u001b\\[[0-9;?>]*[a-zA-Z]", "");
+        // Remove DCS/other escape sequences
         text = text.replaceAll("\u001b[>=]", "");
+        text = text.replaceAll("\u001bP[^\u001b]*\u001b\\\\", "");  // DCS sequences
         // Remove standalone ESC (leftovers)
         text = text.replaceAll("\u001b", "");
         // Remove carriage returns
         text = text.replaceAll("\r", "");
+        // Remove null bytes
+        text = text.replaceAll("\u0000", "");
         // Collapse multiple blank lines
-        text = text.replaceAll("\\n{3,}", "\\n\\n");
+        text = text.replaceAll("\\n{3,}", "\n\n");
         return filterNoise(text);
     }
 
