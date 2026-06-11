@@ -5,6 +5,8 @@ import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import com.example.learnai.agent.ChatModelFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -19,6 +21,9 @@ public class TerminalSessionService {
 
     private static final String INDEX = "terminal_sessions";
     private final ElasticsearchClient client;
+
+    @Autowired
+    private ChatModelFactory chatModelFactory;
 
     public TerminalSessionService(ElasticsearchClient client) {
         this.client = client;
@@ -54,6 +59,8 @@ public class TerminalSessionService {
             session.setContent(clean);
             session.setLines(lines.length);
             session.setEndedAt(System.currentTimeMillis());
+            // 生成标题：取第一句有意义的话，截10字
+            session.setTitle(generateTitle(clean));
             save(session);
         } catch (Exception e) {
             System.err.println("[Terminal] 解析失败: " + e.getMessage());
@@ -100,6 +107,39 @@ public class TerminalSessionService {
             out.append(trimmed).append("\\n");
         }
         return out.toString().trim();
+    }
+
+    /** 用AI总结内容生成10字以内标题 */
+    private String generateTitle(String content) {
+        if (content == null || content.isBlank()) return "空会话";
+        try {
+            // 取前500字符用于总结
+            String snippet = content.length() > 500 ? content.substring(0, 500) : content;
+            String prompt = "用不超过10个字总结以下AI助手对话的核心内容，只输出总结不要任何解释：\n" + snippet;
+            String result = chatModelFactory.getChatClient("deepSeekV4ProChatClient")
+                .prompt().user(prompt).call().content();
+            if (result == null || result.isBlank()) return "会话记录";
+            // 清理结果，去掉引号和多余空白
+            result = result.replaceAll("[\"'\"\\s]+", "").trim();
+            if (result.length() > 10) result = result.substring(0, 10);
+            return result.isEmpty() ? "会话记录" : result;
+        } catch (Exception e) {
+            // AI调用失败，回退到取第一句
+            System.err.println("[Terminal] 标题生成失败，使用回退: " + e.getMessage());
+            return fallbackTitle(content);
+        }
+    }
+
+    /** AI不可用时的回退标题 */
+    private static String fallbackTitle(String content) {
+        for (String line : content.split("\n")) {
+            String t = line.trim();
+            if (t.length() >= 3 && !t.matches("^[=#\\-━▁▂▃▄▅▆▇█*·•●○◎◉◎]+$")
+                && !t.startsWith("✓") && !t.startsWith("✗") && !t.startsWith("📋")) {
+                return t.length() <= 10 ? t : t.substring(0, 10);
+            }
+        }
+        return "会话记录";
     }
 
     /** 查询历史会话 */

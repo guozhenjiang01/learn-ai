@@ -4,6 +4,7 @@ public class TerminalSession {
     private String id;
     private String userId;
     private String username;
+    private String title;       // 会话标题（10字以内）
     private String content;     // 去ANSI后的纯文本
     private String rawFile;     // 原始文件路径
     private long startedAt;
@@ -24,6 +25,8 @@ public class TerminalSession {
     public void setUserId(String userId) { this.userId = userId; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
     public String getRawFile() { return rawFile; }
