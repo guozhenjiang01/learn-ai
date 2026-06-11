@@ -385,48 +385,132 @@ body::before {
 .mode-toggle:hover { border-color: var(--accent); color: var(--accent2); }
 .mode-toggle.mobile-on { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 700; }
 
-/* Mobile mode layout overrides */
-body.mobile-mode .main {
-  flex-direction: column;
+/* Bottom Tab Bar - hidden on desktop */
+.mobile-tabs {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+  background: var(--bg2); border-top: 1px solid var(--accent);
+  padding: 4px 0 env(safe-area-inset-bottom, 4px);
+  justify-content: space-around;
+  box-shadow: 0 -2px 12px rgba(0,0,0,.3);
 }
-body.mobile-mode .chat {
-  flex: 4; min-height: 180px; min-width: 0;
+.mobile-tab {
+  flex: 1; text-align: center; padding: 6px 2px; cursor: pointer;
+  font-size: 10px; color: var(--text3); display: flex;
+  flex-direction: column; align-items: center; gap: 2px;
+  transition: color .15s; user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-body.mobile-mode .drag-handle { display: none; }
-body.mobile-mode .sidebar {
-  flex: 6; width: 100% !important; min-width: 0; max-width: 100%;
-  border-left: none; border-top: 2px solid var(--accent);
-}
-body.mobile-mode .sidebar-tabs .stab {
-  font-size: 12px; padding: 8px 6px;
-}
-body.mobile-mode .chat-input { padding: 10px 14px; }
-body.mobile-mode .chat-input input { padding: 10px 14px; font-size: 13px; }
-body.mobile-mode .chat-input button { padding: 10px 20px; font-size: 13px; }
-body.mobile-mode .hermes-terminal .xterm { font-size: 12px; }
-body.mobile-mode .memo-form input, body.mobile-mode .memo-form textarea { font-size: 13px; padding: 10px 12px; }
-body.mobile-mode .memo-form button { padding: 10px; font-size: 13px; }
-body.mobile-mode .chat-msgs { padding: 10px 14px; gap: 6px; }
-body.mobile-mode .msg { font-size: 13px; max-width: 90%; }
-body.mobile-mode .footer { display: none; }
-body.mobile-mode .topbar { padding: 6px 14px; }
-body.mobile-mode .logo { font-size: 17px; }
+.mobile-tab .mt-icon { font-size: 20px; line-height: 1; }
+.mobile-tab.on { color: var(--accent); }
+.mobile-tab.on .mt-icon { text-shadow: 0 0 8px var(--accent-glow); }
+
+/* Mobile mode overrides */
+body.mobile-mode .topbar { padding: 8px 12px; }
+body.mobile-mode .logo { font-size: 16px; }
 body.mobile-mode .db-ball { width: 26px; height: 26px; }
-body.mobile-mode .user { font-size: 11px; gap: 8px; }
-body.mobile-mode .sidebar-panel.on { display: flex; flex-direction: column; }
+body.mobile-mode .user { font-size: 11px; gap: 6px; }
 body.mobile-mode .db-decoration { display: none; }
 
-/* Mobile: hide weather popup by default, show as modal overlay */
+/* Main layout: chat fills screen */
+body.mobile-mode .main {
+  flex-direction: column;
+  padding-bottom: 56px; /* room for bottom tabs */
+}
+body.mobile-mode .chat {
+  flex: 1; min-height: 0; min-width: 0;
+}
+body.mobile-mode .drag-handle { display: none; }
+
+/* Sidebar becomes full-screen overlay from bottom */
+body.mobile-mode .sidebar {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 40;
+  width: 100% !important; min-width: 0; max-width: 100%;
+  border-left: none; background: var(--bg);
+  flex-direction: column; flex-shrink: 1; flex: none;
+  animation: slideUp .25s ease-out;
+}
+body.mobile-mode .sidebar.open { display: flex; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* Sidebar tabs in mobile: top bar with back button */
+body.mobile-mode .sidebar-tabs {
+  display: flex; align-items: center; padding: 8px 12px;
+  border-bottom: 1px solid var(--accent); gap: 8px;
+}
+body.mobile-mode .sidebar-tabs .stab {
+  flex: none; font-size: 13px; padding: 6px 0; border-bottom: none;
+}
+body.mobile-mode .sidebar-tabs .stab.on {
+  border-bottom-color: transparent; text-shadow: none;
+}
+body.mobile-mode .sidebar-tabs .stab-back {
+  font-size: 20px; cursor: pointer; color: var(--text3);
+  padding: 4px 8px; margin-right: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+body.mobile-mode .sidebar-tabs .stab-back:hover { color: var(--accent); }
+/* Hide original desktop tabs in mobile, show only current one */
+body.mobile-mode .sidebar-tabs .stab:not(.on) { display: none; }
+
+body.mobile-mode .sidebar-panel { flex: 1; min-height: 0; }
+body.mobile-mode .sidebar-panel.on { display: flex; }
+body.mobile-mode .mobile-tabs { display: flex; }
+
+/* Chat input: compact */
+body.mobile-mode .chat-input { padding: 8px 12px; gap: 8px; }
+body.mobile-mode .chat-input input { padding: 10px 12px; font-size: 14px; border-radius: 20px; }
+body.mobile-mode .chat-input button { padding: 10px 16px; font-size: 13px; border-radius: 20px; }
+body.mobile-mode .chat-msgs { padding: 10px 12px; gap: 8px; }
+body.mobile-mode .msg { font-size: 14px; max-width: 88%; padding: 10px 14px; }
+body.mobile-mode .chat-filter { padding: 6px 12px !important; font-size: 11px !important; }
+
+/* Weather popup: centered modal */
 body.mobile-mode .wx-pop {
   position: fixed; top: 50%; left: 50%; right: auto;
   transform: translate(-50%, -50%); width: 92vw; max-width: 360px;
   min-width: 0;
 }
 
-/* On very small screens, give chat a bit more room */
-@media (max-width: 400px) {
-  body.mobile-mode .chat { flex: 3.5; }
-  body.mobile-mode .sidebar { flex: 6.5; }
+/* Footer hidden on mobile */
+body.mobile-mode .footer { display: none; }
+
+/* Smaller text in panels */
+body.mobile-mode .memo-form { padding: 8px 12px; }
+body.mobile-mode .memo-form input, body.mobile-mode .memo-form textarea { font-size: 14px; padding: 10px 12px; }
+body.mobile-mode .memo-form button { padding: 10px; font-size: 14px; }
+body.mobile-mode .memo-list { padding: 6px 12px; }
+body.mobile-mode .memo-item { padding: 12px; }
+body.mobile-mode .memo-item .memo-title { font-size: 14px; }
+body.mobile-mode .memo-item .memo-body { font-size: 13px; }
+
+/* User/audit panels in mobile */
+body.mobile-mode .user-panel { padding: 8px 12px; }
+body.mobile-mode .user-card { padding: 12px; font-size: 13px; }
+body.mobile-mode .user-card .uc-actions button { font-size: 11px; padding: 4px 10px; }
+body.mobile-mode .audit-filters { padding: 8px; flex-wrap: wrap; }
+body.mobile-mode .audit-filters select, body.mobile-mode .audit-filters input { font-size: 12px !important; padding: 6px !important; }
+
+/* Hermes terminal */
+body.mobile-mode .hermes-panel { height: 100%; }
+body.mobile-mode .hermes-terminal { flex: 1; }
+body.mobile-mode .hermes-header { padding: 8px 12px; font-size: 11px; }
+
+/* House news */
+body.mobile-mode .house-header { padding: 8px 12px; font-size: 12px; }
+body.mobile-mode .house-list { padding: 6px 10px; }
+body.mobile-mode .house-card { padding: 12px; }
+body.mobile-mode .house-card .h-title { font-size: 14px; }
+
+/* Extra small screens */
+@media (max-width: 380px) {
+  body.mobile-mode .topbar { padding: 6px 10px; }
+  body.mobile-mode .logo { font-size: 15px; }
+  body.mobile-mode .db-ball { width: 22px; height: 22px; }
+  body.mobile-mode .chat-input { padding: 6px 10px; }
+  body.mobile-mode .chat-input input { padding: 8px 12px; font-size: 13px; }
+  body.mobile-mode .mobile-tab { font-size: 9px; }
+  body.mobile-mode .mobile-tab .mt-icon { font-size: 18px; }
 }
 </style>
 </head>
@@ -613,6 +697,14 @@ body.mobile-mode .wx-pop {
   <span>DeepSeek 余额：</span><span id="dsBalance" style="color:var(--text2);">加载中...</span>
 </div>
 
+<div class="mobile-tabs" id="mobileTabs">
+  <div class="mobile-tab" onclick="mobileSwitchTab('memo')"><span class="mt-icon">📝</span>备忘录</div>
+  <div class="mobile-tab" onclick="mobileSwitchTab('hermes')"><span class="mt-icon">🤖</span>Hermes</div>
+  <div class="mobile-tab" onclick="mobileSwitchTab('house')"><span class="mt-icon">🏠</span>房产</div>
+  <div class="mobile-tab" id="mt-users" onclick="mobileSwitchTab('users')" style="display:none;"><span class="mt-icon">👥</span>用户</div>
+  <div class="mobile-tab" id="mt-audit" onclick="mobileSwitchTab('audit')" style="display:none;"><span class="mt-icon">📋</span>日志</div>
+</div>
+
 <script src="memo.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
@@ -633,8 +725,8 @@ document.getElementById('userDisplay').innerHTML = '👤 ' + username +
 if (isAdmin) {
   var su = document.getElementById('stab-users');
   if (su) { su.style.display = ''; su.textContent = '👥 用户'; }
-  var sa = document.getElementById('stab-audit');
-  if (sa) { sa.style.display = ''; sa.textContent = '📋 日志'; }
+  var mtu = document.getElementById('mt-users');
+  if (mtu) { mtu.style.display = ''; }
   loadUserList();
   // Show chat filter + populate user dropdown
   var cf = document.getElementById('chatFilter');
@@ -642,10 +734,12 @@ if (isAdmin) {
   loadChatUserFilter();
 }
 
-// 日志tab仅管理员可见
+// 日志tab仅超管可见
 if (isSuperAdmin) {
   var sa = document.getElementById('stab-audit');
   if (sa) { sa.style.display = ''; sa.textContent = '📋 日志'; }
+  var mta = document.getElementById('mt-audit');
+  if (mta) { mta.style.display = ''; }
   loadAuditUserFilter();
 }
 
@@ -665,15 +759,19 @@ function doLogout() {
 }
 
 // ===== Mobile / Desktop Mode Toggle =====
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 function toggleMode() {
   var isMobile = document.body.classList.toggle('mobile-mode');
   var btn = document.getElementById('modeToggle');
   if (isMobile) {
-    btn.textContent = '📱 手机模式';
+    btn.textContent = '📱 手机版';
     btn.classList.add('mobile-on');
     localStorage.setItem('viewMode', 'mobile');
   } else {
-    btn.textContent = '🖥 电脑模式';
+    btn.textContent = '🖥 电脑版';
     btn.classList.remove('mobile-on');
     localStorage.setItem('viewMode', 'desktop');
   }
@@ -681,11 +779,29 @@ function toggleMode() {
 
 function initViewMode() {
   var saved = localStorage.getItem('viewMode');
+  var btn = document.getElementById('modeToggle');
+
+  // 没有手动设置过 → 自动检测UA
+  if (!saved) {
+    if (isMobileDevice()) {
+      document.body.classList.add('mobile-mode');
+      btn.textContent = '📱 手机版';
+      btn.classList.add('mobile-on');
+      localStorage.setItem('viewMode', 'mobile');
+      return;
+    } else {
+      btn.textContent = '🖥 电脑版';
+      return;
+    }
+  }
+
   if (saved === 'mobile') {
     document.body.classList.add('mobile-mode');
-    var btn = document.getElementById('modeToggle');
-    btn.textContent = '📱 手机模式';
+    btn.textContent = '📱 手机版';
     btn.classList.add('mobile-on');
+  } else {
+    btn.textContent = '🖥 电脑版';
+    btn.classList.remove('mobile-on');
   }
 }
 
@@ -772,6 +888,69 @@ function switchTab(name) {
   document.getElementById('panel-' + name).classList.add('on');
   if (name === 'hermes') initTerminal();
   if (name === 'audit') loadAuditLogs();
+}
+
+// ===== Mobile Tab Switch (overlay) =====
+function mobileSwitchTab(name) {
+  if (name === 'hermes' && !localStorage.getItem('hermesConfirmed')) {
+    if (!confirm('⚠️ Hermes 终端很消耗机器资源（内存/CPU），请各位搭子尽量别同时使用。\n\n确定要进入吗？')) {
+      return;
+    }
+    localStorage.setItem('hermesConfirmed', '1');
+  }
+  if (name === 'hermes') {
+    fetch('/audit/record', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type': 'application/json'}, authHeaders()),
+      body: JSON.stringify({ action: 'VIEW_HERMES', detail: '终端连接' })
+    }).catch(function(){});
+  }
+
+  var sidebar = document.getElementById('sidebar');
+  var tabs = document.getElementById('sidebar').querySelector('.sidebar-tabs');
+
+  // Reset all desktop tabs
+  document.querySelectorAll('.stab').forEach(function(el) { el.classList.remove('on'); });
+  document.querySelectorAll('.sidebar-panel').forEach(function(el) { el.classList.remove('on'); });
+
+  // Activate correct desktop tab + panel
+  var stabs = document.querySelectorAll('.stab');
+  for (var i = 0; i < stabs.length; i++) {
+    if (stabs[i].getAttribute('onclick') && stabs[i].getAttribute('onclick').indexOf("'" + name + "'") !== -1) {
+      stabs[i].classList.add('on');
+      break;
+    }
+  }
+  document.getElementById('panel-' + name).classList.add('on');
+
+  // Add back button if not exists
+  if (!tabs.querySelector('.stab-back')) {
+    var back = document.createElement('div');
+    back.className = 'stab-back';
+    back.textContent = '✕';
+    back.setAttribute('onclick', 'closeMobilePanel()');
+    tabs.insertBefore(back, tabs.firstChild);
+  }
+
+  sidebar.classList.add('open');
+
+  // Highlight active mobile tab
+  document.querySelectorAll('.mobile-tab').forEach(function(t) { t.classList.remove('on'); });
+  var sel = '.mobile-tab[onclick*=\"' + name + '\"]';
+  var active = document.querySelector(sel);
+  if (active) active.classList.add('on');
+
+  if (name === 'hermes') initTerminal();
+  if (name === 'audit') loadAuditLogs();
+
+  // Prevent body scroll when overlay is open
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMobilePanel() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.querySelectorAll('.mobile-tab').forEach(function(t) { t.classList.remove('on'); });
+  document.body.style.overflow = '';
 }
 
 // ===== Memo (from memo.js, consolidated) =====
