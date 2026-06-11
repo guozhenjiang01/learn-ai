@@ -161,7 +161,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
 </div>
 
 <script>
-const TOKEN=localS...en') || '';
+var _ls=localStorage;var TOKEN=_ls.getItem('token')||'';
 const CATEGORIES = ['通勤','工资','老婆','带娃','大厂','其他'];
 let activeCat = '';
 if (!TOKEN) { document.body.innerHTML = '<div class="empty" style="margin-top:60px;">⚠ 请先<a href="/">登录</a></div>'; }
