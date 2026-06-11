@@ -42,7 +42,53 @@ def render_terminal_log(filepath: str) -> str:
 
     # 提取非空行
     lines = [line.rstrip() for line in screen.display if line.strip()]
+
+    # 裁剪掉 Hermes 启动横幅和系统信息，从用户第一条输入开始
+    lines = trim_banner(lines)
+
     return '\n'.join(lines)
+
+
+def trim_banner(lines):
+    """找到第一条用户输入，裁掉前面的系统横幅。"""
+    # 找到 "Welcome to Hermes Agent" 行
+    welcome_idx = None
+    for i, line in enumerate(lines):
+        if 'Welcome to Hermes Agent' in line:
+            welcome_idx = i
+            break
+    if welcome_idx is None:
+        return lines  # 无横幅，原样返回
+
+    # 从 welcome 之后找第一个 '●' 提示符（可能跟用户输入在同一行）
+    prompt_idx = None
+    for i in range(welcome_idx + 1, len(lines)):
+        if lines[i].strip().startswith('●'):
+            prompt_idx = i
+            break
+
+    if prompt_idx is None:
+        # 没找到 ●，尝试从 welcome 后第二条分隔线之后开始
+        sep_count = 0
+        for i in range(welcome_idx + 1, len(lines)):
+            if lines[i].startswith('──') or lines[i].startswith('━━'):
+                sep_count += 1
+                if sep_count >= 2:
+                    # 分隔线之后的行就是用户输入
+                    if i + 1 < len(lines):
+                        return lines[i + 1:]
+                    break
+        return lines  # 回退
+
+    # ● 和用户输入在同一行 → 从该行开始
+    # ● 单独一行（旧格式）→ 从下一行开始
+    if lines[prompt_idx].strip() == '●':
+        start = prompt_idx + 1
+    else:
+        start = prompt_idx
+    if start >= len(lines):
+        return lines
+    return lines[start:]
 
 
 if __name__ == '__main__':
