@@ -123,21 +123,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
     <div class="result" id="result"></div>
   </div>
 
-  <!-- Step 2: Free Generate -->
-  <div class="card">
-    <h2>✍️ 自由生成</h2>
-    <div class="sub">直接写提示词，AI 按需生成</div>
-
-    <div class="input-row">
-      <input id="freePrompt" placeholder="提示词：比如「拍一条加班到凌晨赶G551的日常」...">
-    </div>
-    <div class="input-row">
-      <input id="freeExtra" placeholder="额外要求（可不填）：时长、风格、特殊场景...">
-    </div>
-    <button class="btn btn-outline btn-block" onclick="freeGenerate()" id="freeBtn" style="margin-top:4px;">✨ 生成</button>
-
-    <div class="result" id="freeResult"></div>
-  </div>
+  <!-- Materials -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
       <h2 style="margin:0;">📚 素材库</h2>
@@ -445,81 +431,6 @@ function saveManual() {
     document.getElementById('manualForm').classList.remove('on');
     loadMaterials();
   });
-}
-
-// --- Free Generate ---
-let freePack = '';
-function freeGenerate() {
-  const prompt = document.getElementById('freePrompt').value.trim();
-  if (!prompt) { alert('请填写提示词'); return; }
-  const btn = document.getElementById('freeBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>生成中...';
-  document.getElementById('freeResult').innerHTML = '';
-
-  api('/media/free', {
-    method: 'POST',
-    body: JSON.stringify({
-      prompt: prompt,
-      extra: document.getElementById('freeExtra').value
-    })
-  }).then(data => {
-    btn.disabled = false;
-    btn.innerHTML = '✨ 生成';
-    if (data.pack) {
-      freePack = data.pack;
-      showFreePack(data.pack);
-    } else {
-      document.getElementById('freeResult').innerHTML = '<div class="empty">生成失败</div>';
-    }
-  }).catch(() => {
-    btn.disabled = false;
-    btn.innerHTML = '✨ 生成';
-    document.getElementById('freeResult').innerHTML = '<div class="empty">网络错误</div>';
-  });
-}
-
-function showFreePack(content) {
-  let html = content
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/━━━/g, '<hr>')
-    .replace(/【(.+?)】/g, '<span class="hl">【$1】</span>')
-    .replace(/\n/g, '<br>');
-
-  document.getElementById('freeResult').innerHTML = `
-    <div class="pack">${html}</div>
-    <div class="review-bar">
-      <input id="freeReviewInput" placeholder="💬 评审意见...">
-    </div>
-    <div class="action-bar">
-      <button class="btn btn-sm btn-outline" onclick="freeRevise()">✏️ 修改</button>
-      <button class="btn btn-sm btn-green" onclick="freeAdopt()">✅ 采纳</button>
-      <button class="btn btn-sm btn-outline" onclick="navigator.clipboard.writeText(freePack)">📋 复制</button>
-    </div>`;
-}
-
-function freeRevise() {
-  const review = document.getElementById('freeReviewInput').value.trim();
-  if (!review) { alert('请先输入评审意见'); return; }
-  document.getElementById('freeResult').innerHTML = '<div class="empty"><span class="spinner"></span>修改中...</div>';
-  api('/media/revise', {
-    method: 'POST',
-    body: JSON.stringify({ previous: freePack, review: review })
-  }).then(data => {
-    if (data.pack) { freePack = data.pack; showFreePack(data.pack); }
-  });
-}
-
-function freeAdopt() {
-  const defCat = allCategories[0] ? allCategories[0].name : '其他';
-  const title = prompt('素材标题：', '自由素材 ' + new Date().toLocaleDateString('zh-CN'));
-  if (!title) return;
-  const cat = prompt('类目：' + allCategories.map(c=>c.name).join('/'), defCat);
-  if (!cat) return;
-  api('/media/materials', {
-    method: 'POST',
-    body: JSON.stringify({ title, topic: cat, content: freePack, template: '自由生成' })
-  }).then(() => { alert('✅ 已存入素材库'); loadMaterials(); });
 }
 
 // --- Materials ---
