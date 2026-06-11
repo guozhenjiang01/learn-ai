@@ -131,7 +131,7 @@ public class HermesController {
         }
         try {
             List<TerminalSession> sessions = terminalSessionService.list(
-                userId, fromTs, toTs, 100);
+                userId, fromTs, toTs, 5);
             return Map.of("success", true, "sessions", sessions);
         } catch (Exception e) {
             return Map.of("success", false, "message", e.getMessage());

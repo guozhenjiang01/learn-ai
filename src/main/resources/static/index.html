@@ -436,26 +436,45 @@ body.mobile-mode .sidebar.open { display: flex; }
 /* Sidebar tabs in mobile: top bar with back button */
 body.mobile-mode .sidebar-tabs {
   display: flex; align-items: center; padding: 8px 12px;
-  border-bottom: 1px solid var(--accent); gap: 8px;
+  border-bottom: 1px solid var(--accent); gap: 6px;
+  overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* hide scrollbar */
 }
+body.mobile-mode .sidebar-tabs::-webkit-scrollbar { display: none; }
 body.mobile-mode .sidebar-tabs .stab {
   flex: none; font-size: 13px; padding: 6px 0; border-bottom: none;
+  white-space: nowrap;
 }
 body.mobile-mode .sidebar-tabs .stab.on {
   border-bottom-color: transparent; text-shadow: none;
 }
 body.mobile-mode .sidebar-tabs .stab-back {
-  font-size: 20px; cursor: pointer; color: var(--text3);
-  padding: 4px 8px; margin-right: 4px;
+  font-size: 16px; cursor: pointer; color: var(--text);
+  padding: 8px 14px; margin-right: 4px; background: var(--bg3);
+  border-radius: 8px; font-weight: 600;
   -webkit-tap-highlight-color: transparent;
 }
+body.mobile-mode .sidebar-tabs .stab-back:active { background: var(--accent); color: #0d1117; }
 body.mobile-mode .sidebar-tabs .stab-back:hover { color: var(--accent); }
-/* Hide original desktop tabs in mobile, show only current one */
-body.mobile-mode .sidebar-tabs .stab:not(.on) { display: none; }
+/* Mobile sidebar tabs: show all in compact row instead of hiding */
+body.mobile-mode .sidebar-tabs .stab:not(.on) { display: block; font-size: 11px; padding: 4px 8px; color: var(--text3); }
 
 body.mobile-mode .sidebar-panel { flex: 1; min-height: 0; }
 body.mobile-mode .sidebar-panel.on { display: flex; }
 body.mobile-mode .mobile-tabs { display: flex; }
+
+/* Mobile: big close button at sidebar bottom */
+.mobile-close-bar { display: none; }
+body.mobile-mode .sidebar.open .mobile-close-bar {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  position: sticky; bottom: 0; z-index: 60;
+  background: linear-gradient(0deg, var(--bg2) 60%, transparent);
+  padding: 12px 20px 20px; margin-top: auto;
+  color: var(--red); font-size: 15px; font-weight: 700; cursor: pointer;
+  border-top: 1px solid var(--border);
+  -webkit-tap-highlight-color: transparent;
+}
+body.mobile-mode .mobile-close-bar:active { color: #ff6b6b; background: var(--bg3); }
 
 /* Chat input: compact */
 body.mobile-mode .chat-input { padding: 8px 12px; gap: 8px; }
@@ -494,7 +513,23 @@ body.mobile-mode .audit-filters select, body.mobile-mode .audit-filters input { 
 /* Hermes terminal */
 body.mobile-mode .hermes-panel { height: 100%; }
 body.mobile-mode .hermes-terminal { flex: 1; }
-body.mobile-mode .hermes-header { padding: 8px 12px; font-size: 11px; }
+body.mobile-mode .hermes-header { padding: 10px 12px; font-size: 12px; }
+body.mobile-mode .hermes-header .h-reset { font-size: 18px !important; padding: 6px 10px !important; margin-left: 4px !important; }
+body.mobile-mode #termHistBtn { font-size: 13px !important; padding: 6px 12px !important; border-radius: 12px !important; }
+/* "← 聊天" back button in hermes header on mobile */
+body.mobile-mode #hermesBackBtn { display: inline !important; }
+/* Terminal history dropdown — full width on mobile */
+body.mobile-mode #termHistDrop { width: calc(100vw - 24px) !important; max-width: 340px !important; right: 4px !important; top: 38px !important; max-height: 50vh !important; font-size: 13px !important; }
+body.mobile-mode #termHistFilter { font-size: 12px !important; padding: 8px 10px !important; gap: 6px !important; }
+body.mobile-mode #termHistFilter input, body.mobile-mode #termHistFilter button { font-size: 13px !important; padding: 6px 8px !important; }
+body.mobile-mode #termHistFilter input[type="date"] { font-size: 12px !important; width: auto !important; min-width: 90px !important; }
+body.mobile-mode #termHistFilter #tfUser { width: 70px !important; font-size: 13px !important; padding: 6px 8px !important; }
+body.mobile-mode #termSessList { padding: 8px 10px !important; font-size: 13px !important; }
+/* List items: larger touch targets */
+body.mobile-mode .ts-item { padding: 10px 8px !important; font-size: 13px !important; line-height: 1.5 !important; }
+body.mobile-mode .ts-item span { font-size: 13px !important; }
+body.mobile-mode .ts-send-btn { font-size: 13px !important; padding: 4px 10px !important; }
+body.mobile-mode .ts-detail pre { font-size: 12px !important; max-height: 150px !important; }
 
 /* House news */
 body.mobile-mode .house-header { padding: 8px 12px; font-size: 12px; }
@@ -511,6 +546,12 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
   body.mobile-mode .chat-input input { padding: 8px 12px; font-size: 13px; }
   body.mobile-mode .mobile-tab { font-size: 9px; }
   body.mobile-mode .mobile-tab .mt-icon { font-size: 18px; }
+  body.mobile-mode .hermes-header { padding: 8px 10px; font-size: 11px; }
+  body.mobile-mode #termHistBtn { font-size: 12px !important; padding: 5px 10px !important; }
+  body.mobile-mode #termHistDrop { max-width: 300px !important; }
+  body.mobile-mode #termHistFilter { padding: 6px 8px !important; }
+  body.mobile-mode #termHistFilter input { font-size: 12px !important; padding: 5px 6px !important; }
+  body.mobile-mode .ts-item { padding: 8px 6px !important; font-size: 12px !important; }
 }
 </style>
 </head>
@@ -573,7 +614,7 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
     <div class="sidebar-tabs">
       <div class="stab on" onclick="switchTab('memo')">📝 备忘录</div>
       <div class="stab" onclick="switchTab('hermes')">🤖 Hermes</div>
-      <div class="stab" onclick="switchTab('house')">🏠 房产</div>
+      <div class="stab" onclick="switchTab('house')" style="display:none;">🏠 房产</div>
       <div class="stab" id="stab-users" onclick="switchTab('users')" style="display:none;">👥 用户</div>
       <div class="stab" id="stab-audit" onclick="switchTab('audit')" style="display:none;">📋 日志</div>
     </div>
@@ -594,6 +635,7 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
     <div class="sidebar-panel" id="panel-hermes">
       <div class="hermes-panel" style="position:relative;">
         <div class="hermes-header">
+          <span id="hermesBackBtn" onclick="closeMobilePanel()" style="display:none;cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;margin-right:4px;">← 聊天</span>
           💻 hermes ~ ssh terminal
           <span style="flex:1;"></span>
           <span class="h-reset" onclick="reconnectTerminal()" style="margin-right:6px;">↺</span>
@@ -664,7 +706,7 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
     </div>
 
     <!-- House Panel -->
-    <div class="sidebar-panel" id="panel-house">
+    <div class="sidebar-panel" id="panel-house" style="display:none;">
       <div class="house-panel">
         <div class="house-header">
           🏠 榆次 & 太原房产
@@ -694,6 +736,11 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
       </div>
     </div>
   </div>
+
+  <!-- Mobile: big close button at bottom of sidebar -->
+  <div class="mobile-close-bar" onclick="closeMobilePanel()">
+    <span style="font-size:16px;">✕</span> 返回聊天
+  </div>
 </div>
 
 <!-- ===== Footer ===== -->
@@ -707,7 +754,7 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
 <div class="mobile-tabs" id="mobileTabs">
   <div class="mobile-tab" onclick="mobileSwitchTab('memo')"><span class="mt-icon">📝</span>备忘录</div>
   <div class="mobile-tab" onclick="mobileSwitchTab('hermes')"><span class="mt-icon">🤖</span>Hermes</div>
-  <div class="mobile-tab" onclick="mobileSwitchTab('house')"><span class="mt-icon">🏠</span>房产</div>
+  <div class="mobile-tab" onclick="mobileSwitchTab('house')" style="display:none;"><span class="mt-icon">🏠</span>房产</div>
   <div class="mobile-tab" id="mt-users" onclick="mobileSwitchTab('users')" style="display:none;"><span class="mt-icon">👥</span>用户</div>
   <div class="mobile-tab" id="mt-audit" onclick="mobileSwitchTab('audit')" style="display:none;"><span class="mt-icon">📋</span>日志</div>
 </div>
@@ -869,11 +916,11 @@ document.addEventListener('mouseup', function() {
 
 // ===== Sidebar Tab Switch =====
 function switchTab(name) {
-  if (name === 'hermes' && !localStorage.getItem('hermesConfirmed')) {
+  if (name === 'hermes' && !term && !sessionStorage.getItem('hermesConfirmed')) {
     if (!confirm('⚠️ Hermes 终端很消耗机器资源（内存/CPU），请各位搭子尽量别同时使用。\n\n确定要进入吗？')) {
       return;
     }
-    localStorage.setItem('hermesConfirmed', '1');
+    sessionStorage.setItem('hermesConfirmed', '1');
   }
   if (name === 'hermes') {
     fetch('/audit/record', {
@@ -899,11 +946,22 @@ function switchTab(name) {
 
 // ===== Mobile Tab Switch (overlay) =====
 function mobileSwitchTab(name) {
-  if (name === 'hermes' && !localStorage.getItem('hermesConfirmed')) {
+  var sidebar = document.getElementById('sidebar');
+
+  // Toggle: if same tab already open, close and go back to chat
+  if (sidebar.classList.contains('open')) {
+    var activeTab = document.querySelector('.mobile-tab.on');
+    if (activeTab && activeTab.getAttribute('onclick').indexOf("'" + name + "'") !== -1) {
+      closeMobilePanel();
+      return;
+    }
+  }
+
+  if (name === 'hermes' && !term && !sessionStorage.getItem('hermesConfirmed')) {
     if (!confirm('⚠️ Hermes 终端很消耗机器资源（内存/CPU），请各位搭子尽量别同时使用。\n\n确定要进入吗？')) {
       return;
     }
-    localStorage.setItem('hermesConfirmed', '1');
+    sessionStorage.setItem('hermesConfirmed', '1');
   }
   if (name === 'hermes') {
     fetch('/audit/record', {
@@ -955,6 +1013,9 @@ function mobileSwitchTab(name) {
 }
 
 function closeMobilePanel() {
+  // Close term history dropdown if open
+  var drop = document.getElementById('termHistDrop');
+  if (drop) drop.style.display = 'none';
   document.getElementById('sidebar').classList.remove('open');
   document.querySelectorAll('.mobile-tab').forEach(function(t) { t.classList.remove('on'); });
   document.body.style.overflow = '';
