@@ -184,11 +184,11 @@ public class UserService {
 
     // ==================== 权限管理（升级/降级） ====================
 
-    /** 提升为超管 */
+    /** 提升为超管（operator） */
     public void promoteToAdmin(String userId) throws IOException {
         ensureIndex(USER_INDEX);
         client.update(u -> u.index(USER_INDEX).id(userId)
-                .doc(Map.of("role", "admin")), User.class);
+                .doc(Map.of("role", "operator")), User.class);
     }
 
     /** 降级为普通用户（永久超管不可降级） */
@@ -199,7 +199,7 @@ public class UserService {
         if (user.isPermanentAdmin()) {
             throw new RuntimeException(user.getUsername() + " 是永久超管，不可降级");
         }
-        if (!"admin".equals(user.getRole())) {
+        if (!user.getIsAdmin()) {
             throw new RuntimeException("该用户不是超管，无需降级");
         }
         client.update(u -> u.index(USER_INDEX).id(userId)
@@ -257,9 +257,13 @@ public class UserService {
         long total = resp.hits().total() != null ? resp.hits().total().value() : 0;
 
         long admins = 0, disabled = 0;
-        SearchResponse<User> adminResp = client.search(s -> s
-                .index(USER_INDEX).query(q -> q.term(t -> t.field("role").value("admin"))).size(0), User.class);
-        admins = adminResp.hits().total() != null ? adminResp.hits().total().value() : 0;
+        try {
+            SearchResponse<User> adminResp = client.search(s -> s
+                    .index(USER_INDEX).query(q -> q.bool(b -> b
+                        .should(sh -> sh.term(t -> t.field("role").value("admin")))
+                        .should(sh -> sh.term(t -> t.field("role").value("operator"))))).size(0), User.class);
+            admins = adminResp.hits().total() != null ? adminResp.hits().total().value() : 0;
+        } catch (Exception ignored) {}
 
         SearchResponse<User> disResp = client.search(s -> s
                 .index(USER_INDEX).query(q -> q.term(t -> t.field("status").value("disabled"))).size(0), User.class);

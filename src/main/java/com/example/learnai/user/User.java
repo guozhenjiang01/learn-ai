@@ -55,7 +55,10 @@ public class User {
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
     @JsonIgnore
-    public boolean getIsAdmin() { return "admin".equals(role); }
+    public boolean getIsAdmin() { return "admin".equals(role) || "operator".equals(role); }
+
+    @JsonIgnore
+    public boolean isSuperAdmin() { return "admin".equals(role); }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
     public String getStatus() { return status; }

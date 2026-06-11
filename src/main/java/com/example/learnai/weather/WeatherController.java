@@ -1,9 +1,12 @@
 package com.example.learnai.weather;
 
+import com.example.learnai.audit.OperationLog;
+import com.example.learnai.audit.OperationLogService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +24,11 @@ public class WeatherController {
 
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private final OperationLogService audit;
+
+    public WeatherController(OperationLogService audit) {
+        this.audit = audit;
+    }
 
     // 北京亦庄 39.79,116.50  榆次 37.70,112.74
     private static final String[][] CITIES = {
@@ -81,12 +89,20 @@ public class WeatherController {
     );
 
     @GetMapping
-    public String weather() throws IOException, InterruptedException {
+    public String weather(HttpServletRequest req) throws IOException, InterruptedException {
+        // 记录查看天气（非阻塞）
+        String username = (String) req.getAttribute("username");
+        String userId = (String) req.getAttribute("userId");
+        if (username != null) {
+            try { audit.log(new OperationLog(userId, username, "VIEW_WEATHER", "查看天气", clientIp(req))); }
+            catch (Exception ignored) {}
+        }
+
         ArrayNode result = MAPPER.createArrayNode();
         for (String[] city : CITIES) {
             String url = "https://wttr.in/" + city[1] + "?format=j1";
-            HttpRequest req = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
-            HttpResponse<String> resp = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+            HttpRequest httpReq = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+            HttpResponse<String> resp = HTTP.send(httpReq, HttpResponse.BodyHandlers.ofString());
             JsonNode wttr = MAPPER.readTree(resp.body());
 
             ObjectNode data = MAPPER.createObjectNode();
@@ -137,5 +153,10 @@ public class WeatherController {
             result.add(cityObj);
         }
         return MAPPER.writeValueAsString(result);
+    }
+
+    private String clientIp(HttpServletRequest req) {
+        String ip = req.getHeader("X-Forwarded-For");
+        return ip != null ? ip.split(",")[0].trim() : req.getRemoteAddr();
     }
 }

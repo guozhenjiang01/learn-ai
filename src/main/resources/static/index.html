@@ -491,6 +491,7 @@ body.mobile-mode .wx-pop {
       <div class="stab" onclick="switchTab('hermes')">🤖 Hermes</div>
       <div class="stab" onclick="switchTab('house')">🏠 房产</div>
       <div class="stab" id="stab-users" onclick="switchTab('users')" style="display:none;">👥 用户</div>
+      <div class="stab" id="stab-audit" onclick="switchTab('audit')" style="display:none;">📋 日志</div>
     </div>
 
     <!-- Memo Panel -->
@@ -531,6 +532,42 @@ body.mobile-mode .wx-pop {
         </div>
         <div id="userList">
           <div style="color:var(--text3);text-align:center;padding:20px;font-size:13px;">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit Panel (admin only) -->
+    <div class="sidebar-panel" id="panel-audit">
+      <div style="padding:8px 12px;font-size:13px;font-weight:600;color:var(--green);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+        📋 操作日志
+        <span id="auditStats" style="font-size:10px;color:var(--text3);margin-left:auto;"></span>
+      </div>
+      <div class="audit-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div class="audit-filters" style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex-shrink:0;">
+          <select id="auditAction" onchange="loadAuditLogs()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:11px;outline:none;">
+            <option value="">全部操作</option>
+            <option value="LOGIN">🔑 登录</option>
+            <option value="LOGOUT">🚪 退出</option>
+            <option value="REGISTER">📝 注册</option>
+            <option value="VIEW_PAGE">📄 访问页面</option>
+            <option value="VIEW_WEATHER">🌤 查看天气</option>
+            <option value="VIEW_HERMES">💻 Hermes</option>
+            <option value="PROMOTE_ADMIN">⬆ 提升</option>
+            <option value="DEMOTE_USER">⬇ 降级</option>
+            <option value="DISABLE_USER">🚫 禁用</option>
+            <option value="ENABLE_USER">✅ 启用</option>
+            <option value="RESET_PWD">🔑 重置密码</option>
+          </select>
+          <input type="date" id="auditFrom" onchange="loadAuditLogs()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:11px;outline:none;width:120px;" title="开始日期">
+          <span style="color:var(--text3);font-size:11px;">至</span>
+          <input type="date" id="auditTo" onchange="loadAuditLogs()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:11px;outline:none;width:120px;" title="结束日期">
+          <select id="auditUser" onchange="loadAuditLogs()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:11px;outline:none;min-width:100px;">
+            <option value="">全部用户</option>
+          </select>
+          <button onclick="loadAuditLogs()" style="background:var(--accent);border:none;color:#0d1117;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">🔍 查询</button>
+        </div>
+        <div id="auditList" style="flex:1;overflow-y:auto;padding:8px 12px;">
+          <div style="color:var(--text3);text-align:center;padding:20px;font-size:13px;">点击查询查看日志</div>
         </div>
       </div>
     </div>
@@ -584,22 +621,42 @@ body.mobile-mode .wx-pop {
 const token = localStorage.getItem('token');
 const username = localStorage.getItem('username');
 const role = localStorage.getItem('role');
-const isAdmin = localStorage.getItem('isAdmin') === '1' || localStorage.getItem('role') === 'admin';
+const isAdmin = localStorage.getItem('isAdmin') === '1' || localStorage.getItem('role') === 'admin' || localStorage.getItem('role') === 'operator';
+const isSuperAdmin = localStorage.getItem('role') === 'admin';
 if (!token) { window.location.href = '/login.html'; }
 
 document.getElementById('userDisplay').innerHTML = '👤 ' + username +
-  (isAdmin ? ' <span class="admin-badge">超管</span>' : '');
+  (isSuperAdmin ? ' <span class="admin-badge" style="background:#f77f0020;color:#f77f00;">超管</span>' : '') +
+  (isAdmin && !isSuperAdmin ? ' <span class="admin-badge">管理员</span>' : '');
 
 // Admin-only: show users tab and chat filter
 if (isAdmin) {
   var su = document.getElementById('stab-users');
   if (su) { su.style.display = ''; su.textContent = '👥 用户'; }
+  var sa = document.getElementById('stab-audit');
+  if (sa) { sa.style.display = ''; sa.textContent = '📋 日志'; }
   loadUserList();
   // Show chat filter + populate user dropdown
   var cf = document.getElementById('chatFilter');
   if (cf) { cf.style.display = 'flex'; }
   loadChatUserFilter();
 }
+
+// 日志tab仅管理员可见
+if (isSuperAdmin) {
+  var sa = document.getElementById('stab-audit');
+  if (sa) { sa.style.display = ''; sa.textContent = '📋 日志'; }
+  loadAuditUserFilter();
+}
+
+// 记录页面访问
+(function() {
+  fetch('/audit/record', {
+    method: 'POST',
+    headers: Object.assign({'Content-Type': 'application/json'}, authHeaders()),
+    body: JSON.stringify({ action: 'VIEW_PAGE', detail: document.title })
+  }).catch(function(){});
+})();
 
 function doLogout() {
   fetch('/user/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
@@ -695,6 +752,13 @@ function switchTab(name) {
     }
     localStorage.setItem('hermesConfirmed', '1');
   }
+  if (name === 'hermes') {
+    fetch('/audit/record', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type': 'application/json'}, authHeaders()),
+      body: JSON.stringify({ action: 'VIEW_HERMES', detail: '终端连接' })
+    }).catch(function(){});
+  }
   document.querySelectorAll('.stab').forEach(function(el) { el.classList.remove('on'); });
   document.querySelectorAll('.sidebar-panel').forEach(function(el) { el.classList.remove('on'); });
 
@@ -707,6 +771,7 @@ function switchTab(name) {
   }
   document.getElementById('panel-' + name).classList.add('on');
   if (name === 'hermes') initTerminal();
+  if (name === 'audit') loadAuditLogs();
 }
 
 // ===== Memo (from memo.js, consolidated) =====
@@ -827,7 +892,15 @@ function updateWxPop() {
 function toggleWeather() {
   const pop = document.getElementById('wxPop');
   pop.classList.toggle('show');
-  if (pop.classList.contains('show')) updateWxPop();
+  if (pop.classList.contains('show')) {
+    updateWxPop();
+    // 记录查看天气
+    fetch('/audit/record', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type': 'application/json'}, authHeaders()),
+      body: JSON.stringify({ action: 'VIEW_WEATHER', detail: '弹窗查看' })
+    }).catch(function(){});
+  }
 }
 
 document.addEventListener('click', e => {
@@ -992,11 +1065,13 @@ function renderUserList(users) {
   document.getElementById('userStatsBar').textContent = '共' + total + '人 | 超管' + admins + ' | 禁用' + disabled;
 
   list.innerHTML = users.map(function(u) {
-    var isAdminUser = u.role === 'admin';
+    var isAdminUser = u.role === 'admin' || u.role === 'operator';
+    var isSuperAdminUser = u.role === 'admin';
     var initial = (u.username || '?').charAt(0).toUpperCase();
     var avatarCls = u.status === 'disabled' ? 'disabled-av' : (isAdminUser ? 'admin-av' : '');
     var badges = '';
-    if (isAdminUser) badges += '<span class="uc-badge admin">超管</span>';
+    if (isSuperAdminUser) badges += '<span class="uc-badge admin" style="background:#f77f0020;color:#f77f00;">超管</span>';
+    else if (isAdminUser) badges += '<span class="uc-badge admin">管理员</span>';
     else badges += '<span class="uc-badge user">用户</span>';
     if (u.status === 'disabled') badges += '<span class="uc-badge disabled">已禁用</span>';
     // Check if permanent admin
@@ -1115,6 +1190,73 @@ async function resetUserPwd(userId, username) {
     if (d.success) { alert('密码已重置为：' + newPwd + '（请告知用户）'); } else { alert(d.message); }
   } catch(e) { alert('操作失败'); }
 }
+
+// ===== Audit Logs (admin) =====
+async function loadAuditUserFilter() {
+  try {
+    var r = await fetch('/user/list', { headers: authHeaders() });
+    var d = await r.json();
+    if (!d.success || !d.users) return;
+    var sel = document.getElementById('auditUser');
+    if (!sel) return;
+    d.users.forEach(function(u) {
+      var opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.username;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+async function loadAuditLogs() {
+  var list = document.getElementById('auditList');
+  list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px;font-size:13px;">⏳ 加载中...</div>';
+  try {
+    var params = new URLSearchParams();
+    var action = document.getElementById('auditAction').value;
+    var userId = document.getElementById('auditUser').value;
+    var fromDate = document.getElementById('auditFrom').value;
+    var toDate = document.getElementById('auditTo').value;
+    if (action) params.set('action', action);
+    if (userId) params.set('userId', userId);
+    if (fromDate) params.set('fromTs', new Date(fromDate).getTime());
+    if (toDate) params.set('toTs', new Date(toDate + 'T23:59:59').getTime());
+    params.set('size', '200');
+
+    var r = await fetch(api('/audit/logs?' + params.toString()), { headers: authHeaders() });
+    var d = await r.json();
+    if (!d.success || !d.logs || !d.logs.length) {
+      list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px;font-size:13px;">📭 暂无日志</div>';
+      document.getElementById('auditStats').textContent = '';
+      return;
+    }
+
+    var actionLabels = {
+      'LOGIN':'🔑 登录','LOGOUT':'🚪 退出','REGISTER':'📝 注册',
+      'VIEW_PAGE':'📄 访问','VIEW_WEATHER':'🌤 天气','VIEW_HERMES':'💻 Hermes',
+      'PROMOTE_ADMIN':'⬆ 提升','DEMOTE_USER':'⬇ 降级','DISABLE_USER':'🚫 禁用',
+      'ENABLE_USER':'✅ 启用','RESET_PWD':'🔑 重置'
+    };
+
+    document.getElementById('auditStats').textContent = '共' + d.logs.length + '条';
+    list.innerHTML = d.logs.map(function(log) {
+      var time = new Date(log.timestamp);
+      var timeStr = time.toLocaleString('zh-CN');
+      var label = actionLabels[log.action] || log.action;
+      return '<div style="background:var(--bg3);border-radius:6px;padding:8px 12px;margin-bottom:4px;display:flex;align-items:center;gap:10px;font-size:12px;">' +
+        '<span style="color:var(--text2);min-width:70px;">' + timeStr + '</span>' +
+        '<span style="min-width:70px;">' + label + '</span>' +
+        '<span style="color:var(--accent);font-weight:600;min-width:60px;">' + escHtml(log.username) + '</span>' +
+        '<span style="color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(log.detail || '') + '</span>' +
+        '<span style="color:var(--text3);font-size:10px;">' + escHtml(log.ip || '') + '</span>' +
+        '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px;font-size:13px;">❌ 加载失败</div>';
+  }
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ===== Health Check =====
 setInterval(async () => {
