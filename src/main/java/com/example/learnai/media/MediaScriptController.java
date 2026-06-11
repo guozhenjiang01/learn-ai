@@ -12,9 +12,23 @@ import java.util.Map;
 public class MediaScriptController {
 
     private final MediaScriptService service;
+    private final MediaCategoryService catService;
 
-    public MediaScriptController(MediaScriptService service) {
+    public MediaScriptController(MediaScriptService service, MediaCategoryService catService) {
         this.service = service;
+        this.catService = catService;
+    }
+
+    /** 类目列表 */
+    @GetMapping("/categories")
+    public List<MediaCategory> categories() throws IOException {
+        return catService.listAll();
+    }
+
+    /** 添加自定义类目 */
+    @PostMapping("/categories")
+    public MediaCategory addCategory(@RequestBody Map<String, String> body) throws IOException {
+        return catService.add(body.getOrDefault("name", ""));
     }
 
     /** 通勤素材包生成（支持勾选 topics） */

@@ -105,6 +105,11 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
       <label class="checked" data-topic="周五回太原"><input type="checkbox" checked>🚄 周五回太原</label>
       <label class="checked" data-topic="周末日常"><input type="checkbox" checked>🏠 周末日常</label>
       <label class="checked" data-topic="周一返京"><input type="checkbox" checked>🏢 周一返京</label>
+      <label id="addTopicBtn" style="border-style:dashed;" onclick="showTopicInput(event)">➕ 自定义</label>
+    </div>
+    <div class="input-row" id="topicInputRow" style="display:none;">
+      <input id="newTopicInput" placeholder="输入自定义话题，如「加班」「团建」...">
+      <button class="btn btn-sm btn-outline" onclick="addCustomTopic()">添加</button>
     </div>
 
     <div class="input-row">
@@ -139,7 +144,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
     <div class="manual-form" id="manualForm">
       <div class="input-row">
         <input id="manTitle" placeholder="素材标题">
-        <select id="manCat">
+        <select id="manCat" class="cat-select">
           <option value="通勤">🚄 通勤</option>
           <option value="工资">💰 工资</option>
           <option value="老婆">👩‍🎓 老婆</option>
@@ -162,8 +167,8 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
 
 <script>
 var _ls=localStorage;var TOKEN=_ls.getItem('token')||'';
-const CATEGORIES = ['通勤','工资','老婆','带娃','大厂','其他'];
 let activeCat = '';
+let allCategories = [];  // 从后端加载
 if (!TOKEN) { document.body.innerHTML = '<div class="empty" style="margin-top:60px;">⚠ 请先<a href="/">登录</a></div>'; }
 
 function api(path, opts) {
@@ -171,6 +176,50 @@ function api(path, opts) {
     ...opts,
     headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN, ...(opts&&opts.headers||{}) }
   }).then(r => r.json());
+}
+
+// --- load categories ---
+function loadCategories() {
+  api('/media/categories').then(cats => {
+    allCategories = Array.isArray(cats) && cats.length > 0 ? cats : FALLBACK_CATS;
+    renderCatTabs();
+    renderCatDropdowns();
+  }).catch(() => {
+    allCategories = FALLBACK_CATS;
+    renderCatTabs();
+    renderCatDropdowns();
+  });
+}
+
+const FALLBACK_CATS = [
+  {name:'通勤',emoji:'🚄'},{name:'工资',emoji:'💰'},{name:'老婆',emoji:'👩‍🎓'},
+  {name:'带娃',emoji:'👶'},{name:'大厂',emoji:'🏢'},{name:'其他',emoji:'📝'}
+];
+
+function renderCatTabs() {
+  const container = document.getElementById('catTabs');
+  let html = '<span class="cat-tab on" data-cat="">全部<span class="count" id="cntAll">0</span></span>';
+  allCategories.forEach(c => {
+    html += '<span class="cat-tab" data-cat="' + escAttr(c.name) + '">' + (c.emoji||'') + escHtml(c.name) + '<span class="count" id="cnt' + c.name + '">0</span></span>';
+  });
+  container.innerHTML = html;
+  container.addEventListener('click', function(e) {
+    const tab = e.target.closest('.cat-tab');
+    if (!tab) return;
+    container.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('on'));
+    tab.classList.add('on');
+    activeCat = tab.dataset.cat;
+    loadMaterials();
+  });
+}
+
+function renderCatDropdowns() {
+  const selects = document.querySelectorAll('.cat-select');
+  let opts = '';
+  allCategories.forEach(c => {
+    opts += '<option value="' + escAttr(c.name) + '">' + (c.emoji||'') + ' ' + escHtml(c.name) + '</option>';
+  });
+  selects.forEach(s => { s.innerHTML = opts; });
 }
 
 // --- topic checkboxes ---
@@ -185,8 +234,51 @@ document.querySelectorAll('#topicChecks label').forEach(l => {
 
 function getSelectedTopics() {
   return Array.from(document.querySelectorAll('#topicChecks input:checked'))
-    .map(cb => cb.closest('label').dataset.topic);
+    .map(cb => cb.closest('label').dataset.topic || cb.closest('label').textContent.trim());
 }
+
+// --- custom topic ---
+function showTopicInput(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('topicInputRow').style.display = 'flex';
+  document.getElementById('newTopicInput').focus();
+}
+
+function addCustomTopic() {
+  const input = document.getElementById('newTopicInput');
+  const name = input.value.trim();
+  if (!name) return;
+  // Check for duplicate
+  const existing = document.querySelectorAll('#topicChecks label[data-topic]');
+  for (const el of existing) {
+    if (el.dataset.topic === name) { alert('话题已存在'); return; }
+  }
+  // 持久保存类目
+  api('/media/categories', { method:'POST', body:JSON.stringify({name:name}) }).then(() => {
+    loadCategories(); // 刷新类目列表
+  });
+  // 添加为checkbox
+  const group = document.getElementById('topicChecks');
+  const label = document.createElement('label');
+  label.className = 'checked';
+  label.dataset.topic = name;
+  label.innerHTML = '<input type="checkbox" checked> 📌 ' + escHtml(name);
+  label.addEventListener('click', function(e) {
+    e.preventDefault();
+    const cb = this.querySelector('input');
+    cb.checked = !cb.checked;
+    this.classList.toggle('checked', cb.checked);
+  });
+  const addBtn = document.getElementById('addTopicBtn');
+  group.insertBefore(label, addBtn);
+  input.value = '';
+  document.getElementById('topicInputRow').style.display = 'none';
+}
+
+// Also support Enter key in topic input
+document.getElementById('newTopicInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') addCustomTopic();
+});
 
 // --- pre-fill weather ---
 (async function(){
@@ -279,8 +371,9 @@ function revise() {
 function adopt() {
   if (!currentPack) return;
 
-  const defCat = getSelectedTopics().includes('周五回太原') ? '通勤' : '其他';
-  const cat = prompt('选择类目：通勤/工资/老婆/带娃/大厂/其他', defCat);
+  const defCat = getSelectedTopics().includes('周五回太原') ? '通勤' : (allCategories[0] ? allCategories[0].name : '其他');
+  const catNames = allCategories.map(c => c.name).join('/');
+  const cat = prompt('选择类目：' + catNames, defCat);
   if (!cat) return;
   const title = prompt('给这组素材起个名字：', '素材 ' + new Date().toLocaleDateString('zh-CN'));
   if (!title) return;
@@ -357,20 +450,14 @@ function loadMaterials() {
 }
 
 function countByCat(list) {
-  const counts = {};
-  list.forEach(m => { const c = m.topic || '其他'; counts[c] = (counts[c]||0) + 1; });
-  let total = 0;
+  // 清空所有计数
+  document.querySelectorAll('#catTabs .count').forEach(el => el.textContent = '0');
   document.getElementById('cntAll').textContent = list.length;
-  CATEGORIES.forEach(c => {
-    const n = counts[c] || 0;
-    document.getElementById('cnt'+c).textContent = n;
-    total += n;
+  list.forEach(m => {
+    const c = m.topic || '其他';
+    const cntEl = document.getElementById('cnt' + c);
+    if (cntEl) cntEl.textContent = (parseInt(cntEl.textContent)||0) + 1;
   });
-  // handle custom categories
-  const known = new Set(CATEGORIES);
-  let otherCount = 0;
-  Object.entries(counts).forEach(([k,v]) => { if (!known.has(k)) otherCount += v; });
-  if (otherCount > 0) document.getElementById('cnt其他').textContent = (counts['其他']||0) + otherCount;
 }
 
 function viewMaterial(id) {
@@ -399,12 +486,14 @@ function copyPack() {
 }
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(ts) {
   if (!ts) return '';
   const d = new Date(ts);
   return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
 
+loadCategories();
 loadMaterials();
 </script>
 </body>
