@@ -1,5 +1,7 @@
 package com.example.learnai.hermes;
 
+import com.example.learnai.terminal.TerminalSession;
+import com.example.learnai.terminal.TerminalSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,9 @@ public class HermesController {
 
     @Autowired
     private HermesService hermesService;
+
+    @Autowired
+    private TerminalSessionService terminalSessionService;
 
     /** 检查是否为管理员，否则返回 403 */
     private boolean requireAdmin(HttpServletRequest req, Object response) {
@@ -105,5 +110,43 @@ public class HermesController {
         }
         String username = (String) req.getAttribute("username");
         return hermesService.chat("_oneshot_" + System.currentTimeMillis(), username, message);
+    }
+
+    // ==================== 终端录制回放 ====================
+
+    /** 终端会话列表 */
+    @GetMapping("/terminal-sessions")
+    public Map<String, Object> terminalSessions(
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) Long fromTs,
+            @RequestParam(required = false) Long toTs,
+            HttpServletRequest req) {
+        String role = (String) req.getAttribute("role");
+        String selfId = (String) req.getAttribute("userId");
+        boolean isAdmin = "admin".equals(role);
+        // 超管看全部，普通用户只能看自己的
+        if (!isAdmin) {
+            userId = selfId;
+            fromTs = null; toTs = null;
+        }
+        try {
+            List<TerminalSession> sessions = terminalSessionService.list(
+                userId, fromTs, toTs, 100);
+            return Map.of("success", true, "sessions", sessions);
+        } catch (Exception e) {
+            return Map.of("success", false, "message", e.getMessage());
+        }
+    }
+
+    /** 终端会话详情 */
+    @GetMapping("/terminal-sessions/{id}")
+    public Map<String, Object> terminalSession(@PathVariable String id, HttpServletRequest req) {
+        try {
+            TerminalSession s = terminalSessionService.getById(id);
+            if (s == null) return Map.of("success", false, "message", "不存在");
+            return Map.of("success", true, "session", s);
+        } catch (Exception e) {
+            return Map.of("success", false, "message", e.getMessage());
+        }
     }
 }

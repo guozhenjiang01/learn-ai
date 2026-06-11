@@ -592,13 +592,20 @@ body.mobile-mode .house-card .h-title { font-size: 14px; }
 
     <!-- Hermes Panel -->
     <div class="sidebar-panel" id="panel-hermes">
-      <div class="hermes-panel">
+      <div class="hermes-panel" style="position:relative;">
         <div class="hermes-header">
           💻 hermes ~ ssh terminal
-          <span class="h-reset" onclick="reconnectTerminal()">↺ reconnect</span>
+          <span style="flex:1;"></span>
+          <span class="h-reset" onclick="reconnectTerminal()" style="margin-right:6px;">↺</span>
+          <span id="termHistBtn" onclick="toggleTermHistory()" style="cursor:pointer;font-size:10px;color:var(--text3);background:var(--bg3);padding:2px 6px;border-radius:8px;">📋 0</span>
         </div>
         <div class="hermes-terminal">
           <div id="terminalContainer" style="flex:1;padding:4px;"></div>
+        </div>
+        <!-- 历史小挂件：右上角浮出 -->
+        <div id="termHistDrop" style="display:none;position:absolute;top:30px;right:4px;z-index:10;background:var(--bg2);border:1px solid var(--accent);border-radius:8px;width:280px;max-height:300px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.5);">
+          <div id="termHistFilter" style="display:none;padding:6px 8px;border-bottom:1px solid var(--border);font-size:10px;gap:4px;flex-wrap:wrap;"></div>
+          <div id="termSessList" style="padding:6px 8px;font-size:11px;"></div>
         </div>
       </div>
     </div>
@@ -721,21 +728,21 @@ document.getElementById('userDisplay').innerHTML = '👤 ' + username +
   (isSuperAdmin ? ' <span class="admin-badge" style="background:#f77f0020;color:#f77f00;">超管</span>' : '') +
   (isAdmin && !isSuperAdmin ? ' <span class="admin-badge">管理员</span>' : '');
 
-// Admin-only: show users tab and chat filter
+// Admin-only: show users tab
 if (isAdmin) {
   var su = document.getElementById('stab-users');
   if (su) { su.style.display = ''; su.textContent = '👥 用户'; }
   var mtu = document.getElementById('mt-users');
   if (mtu) { mtu.style.display = ''; }
   loadUserList();
-  // Show chat filter + populate user dropdown
+}
+
+// 超管专属：聊天记录筛选 + 日志
+if (isSuperAdmin) {
   var cf = document.getElementById('chatFilter');
   if (cf) { cf.style.display = 'flex'; }
   loadChatUserFilter();
-}
 
-// 日志tab仅超管可见
-if (isSuperAdmin) {
   var sa = document.getElementById('stab-audit');
   if (sa) { sa.style.display = ''; sa.textContent = '📋 日志'; }
   var mta = document.getElementById('mt-audit');
@@ -1113,7 +1120,7 @@ function initTerminal() {
 function connectTerminal() {
   if (termSocket) { try { termSocket.close(); } catch(e) {} }
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = proto + '//' + location.host + '/hermes/terminal';
+  const wsUrl = proto + '//' + location.host + '/hermes/terminal?userId=' + encodeURIComponent(localStorage.getItem('userId')||'') + '&username=' + encodeURIComponent(username);
   termSocket = new WebSocket(wsUrl);
 
   termSocket.onopen = () => {
@@ -1436,6 +1443,151 @@ async function loadAuditLogs() {
 }
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ===== Terminal Session History =====
+function toggleTermHistory() {
+  var drop = document.getElementById('termHistDrop');
+  if (drop.style.display === 'block') {
+    drop.style.display = 'none';
+    return;
+  }
+  drop.style.display = 'block';
+  // 超管显示筛选
+  if (isSuperAdmin) {
+    var filt = document.getElementById('termHistFilter');
+    filt.style.display = 'flex';
+    if (!filt.innerHTML) {
+      filt.innerHTML = '<input id="tfUser" placeholder="用户" style="background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:2px 4px;font-size:10px;width:60px;outline:none;">' +
+        '<input id="tfFrom" type="date" style="background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:2px 4px;font-size:10px;width:100px;outline:none;">' +
+        '<input id="tfTo" type="date" style="background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:2px 4px;font-size:10px;width:100px;outline:none;">' +
+        '<button onclick="loadTermSessions()" style="background:var(--accent);border:none;color:#0d1117;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:10px;">查</button>';
+    }
+  }
+  loadTermSessions();
+}
+// 点击外部关闭
+document.addEventListener('click', function(e) {
+  var drop = document.getElementById('termHistDrop');
+  var btn = document.getElementById('termHistBtn');
+  if (drop && drop.style.display === 'block' && !drop.contains(e.target) && e.target !== btn) {
+    drop.style.display = 'none';
+  }
+});
+
+async function loadTermSessions() {
+  var list = document.getElementById('termSessList');
+  list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:12px;">⏳</div>';
+  try {
+    var params = new URLSearchParams();
+    if (isSuperAdmin) {
+      var u = document.getElementById('tfUser');
+      if (u && u.value) params.set('userId', u.value);
+      var f = document.getElementById('tfFrom');
+      if (f && f.value) params.set('fromTs', new Date(f.value).getTime());
+      var t = document.getElementById('tfTo');
+      if (t && t.value) params.set('toTs', new Date(t.value + 'T23:59:59').getTime());
+    }
+    var r = await fetch(api('/hermes/terminal-sessions?' + params.toString()), { headers: authHeaders() });
+    var d = await r.json();
+    var count = d.sessions ? d.sessions.length : 0;
+    document.getElementById('termHistBtn').textContent = '📋 ' + count;
+
+    if (!d.success || !d.sessions || !d.sessions.length) {
+      list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:12px;">暂无记录</div>';
+      return;
+    }
+    list.innerHTML = d.sessions.map(function(s) {
+      var time = new Date(s.startedAt);
+      var t = time.getHours().toString().padStart(2,'0') + ':' + time.getMinutes().toString().padStart(2,'0');
+      var date = (time.getMonth()+1) + '/' + time.getDate();
+      return '<div class="ts-item" data-sid="' + s.id + '"><div style="display:flex;justify-content:space-between;">' +
+          '<span style="font-weight:600;color:var(--text);">' + escHtml(s.username) + '</span>' +
+          '<span style="color:var(--text3);">' + date + ' ' + t + '</span>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="color:var(--text3);font-size:10px;">' + (s.lines||0) + '行</span>' +
+          '<span class="ts-send-btn" data-sid="' + s.id + '" style="color:#f77f00;cursor:pointer;font-size:10px;user-select:none;">📤 带入</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    // 事件委托
+    list.querySelectorAll('.ts-item').forEach(function(el) {
+      el.addEventListener('click', function() { viewTermSession(el.dataset.sid); });
+      el.addEventListener('mouseenter', function() { el.style.background = '#21262d'; });
+      el.addEventListener('mouseleave', function() { el.style.background = ''; });
+      el.style.cssText = 'padding:5px 6px;cursor:pointer;border-radius:4px;';
+    });
+    // 带入按钮事件
+    list.querySelectorAll('.ts-send-btn').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        sendToHermes(el.dataset.sid);
+      });
+      el.addEventListener('mouseenter', function() { el.style.textDecoration = 'underline'; });
+      el.addEventListener('mouseleave', function() { el.style.textDecoration = ''; });
+    });
+  } catch(e) { list.innerHTML = '<div style="color:var(--red);text-align:center;padding:12px;">加载失败</div>'; }
+}
+
+var currentTermContent = '';
+
+async function sendToHermes(id) {
+  // 确保终端已初始化
+  if (!term || !termSocket || termSocket.readyState !== WebSocket.OPEN) {
+    var panel = document.getElementById('panel-hermes');
+    if (!panel.classList.contains('on')) switchTab('hermes');
+    if (!term) initTerminal();
+    await new Promise(function(r) { setTimeout(r, 2000); });
+    if (!termSocket || termSocket.readyState !== WebSocket.OPEN) {
+      alert('Hermes 终端未连接，请稍后重试');
+      return;
+    }
+  }
+  try {
+    var r = await fetch(api('/hermes/terminal-sessions/' + id), { headers: authHeaders() });
+    var d = await r.json();
+    if (!d.success || !d.session) { alert('加载会话失败'); return; }
+    var s = d.session;
+    var time = new Date(s.startedAt);
+    var dateStr = (time.getMonth()+1) + '/' + time.getDate() + ' ' +
+                  time.getHours().toString().padStart(2,'0') + ':' +
+                  time.getMinutes().toString().padStart(2,'0');
+    var text = '\n这是上次我们聊的内容（' + dateStr + '）:\n\n' + (s.content || '') + '\n';
+    termSocket.send(text);
+    // 关闭下拉
+    document.getElementById('termHistDrop').style.display = 'none';
+  } catch(e) { alert('带入失败: ' + e.message); }
+}
+
+function viewTermSession(id) {
+  var detail = document.getElementById('ts-detail-' + id);
+  // 如果已展开 → 收起
+  if (detail) {
+    detail.remove();
+    return;
+  }
+  // 收起其他展开的
+  document.querySelectorAll('.ts-detail').forEach(function(d) { d.remove(); });
+
+  // 插入展开区
+  var item = document.querySelector('.ts-item[data-sid="' + id + '"]');
+  if (!item) return;
+  detail = document.createElement('div');
+  detail.className = 'ts-detail';
+  detail.id = 'ts-detail-' + id;
+  detail.innerHTML = '<div style="color:var(--text3);text-align:center;padding:8px;">⏳</div>';
+  item.after(detail);
+
+  fetch(api('/hermes/terminal-sessions/' + id), { headers: authHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.success) { detail.innerHTML = '<div style="color:var(--red);padding:8px;">加载失败</div>'; return; }
+      var s = d.session;
+      currentTermContent = s.content || '';
+      detail.innerHTML = '<pre style="margin:4px 0 4px 12px;background:var(--bg);border-radius:4px;padding:8px;font-size:11px;line-height:1.4;color:var(--text);white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto;">' + escHtml(currentTermContent) + '</pre>';
+    })
+    .catch(function() { detail.innerHTML = '<div style="color:var(--red);padding:8px;">加载失败</div>'; });
+}
 
 // ===== Health Check =====
 setInterval(async () => {

@@ -9,6 +9,10 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 public class TerminalWebSocketConfig implements WebSocketConfigurer {
 
+    public TerminalWebSocketConfig(TerminalSessionService sessionService) {
+        TerminalWebSocketHandler.setSessionService(sessionService);
+    }
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(new TerminalWebSocketHandler(), "/hermes/terminal")
