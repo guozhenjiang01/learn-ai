@@ -110,6 +110,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
     <div class="input-row" id="topicInputRow" style="display:none;">
       <input id="newTopicInput" placeholder="输入自定义话题，如「加班」「团建」...">
       <button class="btn btn-sm btn-outline" onclick="addCustomTopic()">添加</button>
+      <button class="btn btn-sm btn-outline" onclick="hideTopicInput()" style="color:var(--text2);">✕</button>
     </div>
 
     <div class="input-row">
@@ -275,7 +276,19 @@ function addCustomTopic() {
   document.getElementById('topicInputRow').style.display = 'none';
 }
 
-// Also support Enter key in topic input
+function hideTopicInput() {
+  document.getElementById('topicInputRow').style.display = 'none';
+  document.getElementById('newTopicInput').value = '';
+}
+
+// 点页面其他地方关闭话题输入
+document.addEventListener('click', function(e) {
+  const row = document.getElementById('topicInputRow');
+  const btn = document.getElementById('addTopicBtn');
+  if (row.style.display !== 'none' && !row.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+    hideTopicInput();
+  }
+});
 document.getElementById('newTopicInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') addCustomTopic();
 });
