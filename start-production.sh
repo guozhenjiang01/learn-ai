@@ -12,11 +12,11 @@ echo "🔧 编译打包..."
 cd "$PROJECT_DIR"
 ./mvnw clean package -DskipTests -q
 
-echo "🚀 启动线上环境 (port 8081)..."
+echo "🚀 启动线上环境 (port 8080)..."
 nohup java -jar "$PROJECT_DIR/target/learn-ai-0.0.1-SNAPSHOT.jar" \
   --spring.profiles.active=production \
   >> "$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
 echo "PID: $(cat $PID_FILE)"
 echo "日志: tail -f $LOG_FILE"
-echo "地址: http://localhost:8081"
+echo "地址: http://localhost:8080"

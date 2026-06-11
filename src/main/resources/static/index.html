@@ -465,6 +465,13 @@ body.mobile-mode .wx-pop {
 <div class="main">
   <!-- Chat (DeepSeek) -->
   <div class="chat" id="chatPanel">
+    <!-- Admin user filter -->
+    <div class="chat-filter" id="chatFilter" style="display:none;padding:6px 20px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;font-size:12px;align-items:center;gap:8px;">
+      <span style="color:var(--text3);">👁 查看记录：</span>
+      <select id="chatUserFilter" onchange="onChatFilterChange()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 8px;font-size:12px;outline:none;">
+        <option value="">📋 全部用户</option>
+      </select>
+    </div>
     <div class="chat-msgs" id="chatMessages">
       <div class="msg system">⚡ 对话开始 — 龙珠主题界面</div>
     </div>
@@ -583,11 +590,15 @@ if (!token) { window.location.href = '/login.html'; }
 document.getElementById('userDisplay').innerHTML = '👤 ' + username +
   (isAdmin ? ' <span class="admin-badge">超管</span>' : '');
 
-// Admin-only: show users tab
+// Admin-only: show users tab and chat filter
 if (isAdmin) {
   var su = document.getElementById('stab-users');
   if (su) { su.style.display = ''; su.textContent = '👥 用户'; }
   loadUserList();
+  // Show chat filter + populate user dropdown
+  var cf = document.getElementById('chatFilter');
+  if (cf) { cf.style.display = 'flex'; }
+  loadChatUserFilter();
 }
 
 function doLogout() {
@@ -699,6 +710,29 @@ function switchTab(name) {
 const cm = document.getElementById('chatMessages');
 const ci = document.getElementById('chatInput');
 
+// Admin: load user list into chat filter dropdown
+async function loadChatUserFilter() {
+  try {
+    var r = await fetch('/user/list', { headers: authHeaders() });
+    var d = await r.json();
+    if (!d.success || !d.users) return;
+    var sel = document.getElementById('chatUserFilter');
+    if (!sel) return;
+    // Keep the first "全部" option, clear the rest
+    while (sel.options.length > 1) sel.remove(1);
+    d.users.forEach(function(u) {
+      var opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.username + (u.remark ? ' (' + u.remark + ')' : '');
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+function onChatFilterChange() {
+  loadHistory();
+}
+
 async function sendMsg() {
   const text = ci.value.trim(); if (!text) return;
   addMsg('user', text); ci.value = '';
@@ -739,7 +773,10 @@ function addMsg(role, text, cls, by) {
 
 async function loadHistory() {
   try {
-    const r = await fetch(api('/chat/history'), { headers: authHeaders() });
+    var filterUid = document.getElementById('chatUserFilter') ? document.getElementById('chatUserFilter').value : '';
+    var url = api('/chat/history');
+    if (filterUid) url += '?userId=' + encodeURIComponent(filterUid);
+    const r = await fetch(url, { headers: authHeaders() });
     if (!r.ok) return;
     const msgs = await r.json();
     cm.innerHTML = '<div class="msg system">⚡ 对话开始 — 龙珠主题界面</div>';

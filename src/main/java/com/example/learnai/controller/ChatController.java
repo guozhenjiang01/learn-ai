@@ -60,10 +60,14 @@ public class ChatController {
     }
 
     @GetMapping("/history")
-    public List<ChatMessage> history(HttpServletRequest req) throws IOException {
+    public List<ChatMessage> history(
+            @RequestParam(value = "userId", required = false) String filterUserId,
+            HttpServletRequest req) throws IOException {
         String userId = (String) req.getAttribute("userId");
         boolean isAdmin = "admin".equals(req.getAttribute("role"));
-        return historyService.list(userId, isAdmin);
+        // 非超管不能看别人的记录
+        if (!isAdmin) filterUserId = null;
+        return historyService.list(userId, isAdmin, filterUserId);
     }
 
     private void saveHistory(HttpServletRequest req, String userMsg, String reply) throws IOException {

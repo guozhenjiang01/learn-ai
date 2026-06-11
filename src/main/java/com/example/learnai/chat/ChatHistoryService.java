@@ -38,13 +38,19 @@ public class ChatHistoryService {
         return msg;
     }
 
-    public List<ChatMessage> list(String userId, boolean isAdmin) throws IOException {
+    public List<ChatMessage> list(String userId, boolean isAdmin, String targetUserId) throws IOException {
         ensureIndex();
         SearchResponse<ChatMessage> resp;
         if (isAdmin) {
+            // 超管：如果指定了 targetUserId 则只看该用户，否则看全部
             resp = client.search(s -> s
                     .index(INDEX)
-                    .query(q -> q.matchAll(ma -> ma))
+                    .query(q -> {
+                        if (targetUserId != null && !targetUserId.isEmpty()) {
+                            return q.term(t -> t.field("userId").value(targetUserId));
+                        }
+                        return q.matchAll(ma -> ma);
+                    })
                     .sort(sort -> sort.field(f -> f.field("createdAt").order(co.elastic.clients.elasticsearch._types.SortOrder.Asc)))
                     .size(500),
                     ChatMessage.class);
