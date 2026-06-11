@@ -109,12 +109,41 @@ public class MediaScriptService {
         return list;
     }
 
-    /** 一键生成通勤素材包 — 周五到周一全套脚本 */
-    public String generateCommutePack(String extra, String weather, String userId, String username) {
+    /** 一键生成通勤素材包 — 根据勾选的 topics 动态生成 */
+    public String generateCommutePack(List<String> topics, String extra, String weather) {
         String weatherInfo = (weather != null && !weather.isEmpty())
             ? "本周天气参考：" + weather + "\n" : "";
         String extraInfo = (extra != null && !extra.isEmpty())
             ? "额外要求：" + extra + "\n" : "";
+
+        // 默认全选
+        if (topics == null || topics.isEmpty()) {
+            topics = List.of("周五回太原", "周末日常", "周一返京");
+        }
+
+        StringBuilder topicDesc = new StringBuilder();
+        for (String t : topics) {
+            switch (t) {
+                case "周五回太原" -> topicDesc.append("""
+                    【周五晚·回太原】
+                    场景：亦庄收工→北京丰台站→G551高铁→太原站→孩子出站口→到家热饭
+                    情绪：疲惫中的期待
+                    
+                    """);
+                case "周末日常" -> topicDesc.append("""
+                    【周末·太原日常】
+                    场景：带娃/菜市场/公园/老婆（北大博士）/收拾行李准备返京
+                    情绪：温馨日常+即将分别的小情绪
+                    
+                    """);
+                case "周一返京" -> topicDesc.append("""
+                    【周一早·返京通勤】
+                    场景：早起→太原站→高铁→亦庄京东→工位开机→周一恐惧
+                    情绪：牛马上钟的无奈
+                    
+                    """);
+            }
+        }
 
         String prompt = """
             你是抖音短视频脚本创作专家。账号人设：
@@ -123,20 +152,9 @@ public class MediaScriptService {
             内容风格：真实接地气，不露脸(POV+手部+空镜+字幕+配音)。
 
             %s%s
-            请生成一套完整的「周五→周一」通勤素材包，包含3条15-30秒抖音脚本：
+            请生成以下%d条15-30秒抖音脚本：
 
-            【周五晚·回太原】
-            场景：亦庄收工→北京丰台站→G551高铁→太原站→孩子出站口→到家热饭
-            情绪：疲惫中的期待
-
-            【周末·太原日常】
-            场景：带娃/菜市场/公园/老婆（北大博士）/收拾行李准备返京
-            情绪：温馨日常+即将分别的小情绪
-
-            【周一早·返京通勤】
-            场景：早起→太原站→高铁→亦庄京东→工位开机→周一恐惧
-            情绪：牛马上钟的无奈
-
+            %s
             ═══ 格式要求（严格遵守） ═══
             每条脚本用分隔线「━━━」隔开，格式：
             ━━━
@@ -156,13 +174,37 @@ public class MediaScriptService {
             ━━━
             
             不露脸！POV视角+手部出镜+场景空镜+字幕配音。
-            """.formatted(weatherInfo, extraInfo);
+            """.formatted(weatherInfo, extraInfo, topics.size(), topicDesc.toString());
 
         try {
             return chatModelFactory.getChatClient("deepSeekV4ProChatClient")
                 .prompt().user(prompt).call().content();
         } catch (Exception e) {
             return "⚠ AI 生成失败: " + e.getMessage() + "\n请稍后重试";
+        }
+    }
+
+    /** 根据评审意见修改脚本 */
+    public String revisePack(String previousContent, String review) {
+        String prompt = """
+            你是抖音短视频脚本创作专家。以下是一组已生成的脚本，用户给了评审意见。
+            请根据意见修改脚本，保持原有格式和结构。
+
+            ═══ 原始脚本 ═══
+            %s
+
+            ═══ 评审意见 ═══
+            %s
+
+            请输出修改后的完整脚本，保持与原始相同的格式（━━━分隔、分镜结构等）。
+            只输出修改后的脚本，不要加任何解释。
+            """.formatted(previousContent, review);
+
+        try {
+            return chatModelFactory.getChatClient("deepSeekV4ProChatClient")
+                .prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            return "⚠ AI 修改失败: " + e.getMessage() + "\n请稍后重试";
         }
     }
 

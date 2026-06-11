@@ -17,7 +17,63 @@ public class MediaScriptController {
         this.service = service;
     }
 
-    /** 查询单条脚本 */
+    /** 通勤素材包生成（支持勾选 topics） */
+    @SuppressWarnings("unchecked")
+    @PostMapping("/commute-pack")
+    public Map<String, Object> commutePack(@RequestBody Map<String, Object> body,
+                                            HttpServletRequest req) throws IOException {
+        String userId = (String) req.getAttribute("userId");
+        String username = (String) req.getAttribute("username");
+        List<String> topics = (List<String>) body.get("topics");
+        String extra = (String) body.getOrDefault("extra", "");
+        String weather = (String) body.getOrDefault("weather", "");
+
+        String pack = service.generateCommutePack(topics, extra, weather);
+        return Map.of("pack", pack);
+    }
+
+    /** 评审后修改 */
+    @PostMapping("/revise")
+    public Map<String, Object> revise(@RequestBody Map<String, String> body) throws IOException {
+        String previous = body.getOrDefault("previous", "");
+        String review = body.getOrDefault("review", "");
+
+        String revised = service.revisePack(previous, review);
+        return Map.of("pack", revised);
+    }
+
+    /** 采纳 → 存入素材库 */
+    @PostMapping("/materials")
+    public MediaScript adopt(@RequestBody Map<String, String> body,
+                              HttpServletRequest req) throws IOException {
+        String userId = (String) req.getAttribute("userId");
+        String username = (String) req.getAttribute("username");
+        MediaScript s = new MediaScript();
+        s.setUserId(userId);
+        s.setUsername(username);
+        s.setTitle(body.getOrDefault("title", "通勤素材"));
+        s.setTopic(body.getOrDefault("topic", "通勤"));
+        s.setTemplate(body.getOrDefault("template", ""));
+        s.setContent(body.getOrDefault("content", ""));
+        s.setStatus("adopted");
+        return service.create(s);
+    }
+
+    /** 素材库列表 */
+    @GetMapping("/materials")
+    public List<MediaScript> materials(HttpServletRequest req) throws IOException {
+        String userId = (String) req.getAttribute("userId");
+        return service.list(userId, null, "adopted", 100);
+    }
+
+    /** 删除素材 */
+    @DeleteMapping("/materials/{id}")
+    public Map<String, Object> deleteMaterial(@PathVariable String id) throws IOException {
+        service.delete(id);
+        return Map.of("success", true);
+    }
+
+    /** 查询单条 */
     @GetMapping("/scripts/{id}")
     public MediaScript getById(@PathVariable String id) throws IOException {
         MediaScript s = service.getById(id);
@@ -34,33 +90,5 @@ public class MediaScriptController {
             HttpServletRequest req) throws IOException {
         String userId = (String) req.getAttribute("userId");
         return service.list(userId, topic, status, size);
-    }
-
-    /** 一键生成通勤素材包（周五→周一全套） */
-    @PostMapping("/commute-pack")
-    public Map<String, Object> commutePack(@RequestBody Map<String, String> body,
-                                            HttpServletRequest req) throws IOException {
-        String userId = (String) req.getAttribute("userId");
-        String username = (String) req.getAttribute("username");
-        String extra = body.getOrDefault("extra", "");
-        String weather = body.getOrDefault("weather", "");
-
-        String pack = service.generateCommutePack(extra, weather, userId, username);
-        return Map.of("pack", pack);
-    }
-
-    /** 更新脚本 */
-    @PutMapping("/scripts/{id}")
-    public MediaScript update(@PathVariable String id,
-                               @RequestBody MediaScript body) throws IOException {
-        body.setId(id);
-        return service.update(body);
-    }
-
-    /** 删除脚本 */
-    @DeleteMapping("/scripts/{id}")
-    public Map<String, Object> delete(@PathVariable String id) throws IOException {
-        service.delete(id);
-        return Map.of("success", true);
     }
 }
