@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -48,21 +47,17 @@ public class TerminalSessionService {
         return session;
     }
 
-    /** 解析 raw 文件 → 去 ANSI → 更新 ES */
+    /** 解析 raw 文件 → pyte 渲染 → 更新 ES */
     public void parseAndUpdate(TerminalSession session) {
         try {
             if (session.getRawFile() == null) return;
-            String raw = Files.readString(Path.of(session.getRawFile()));
-            String clean = stripAnsi(raw);
-            // 截取前5000行/50万字符
+            String clean = renderWithPyte(session.getRawFile());
+            // 截取前50万字符
             if (clean.length() > 500000) clean = clean.substring(0, 500000);
-            // 去除前导噪声（如旧版本产生的 "nn" 前缀）
-            clean = clean.replaceFirst("^\\s*nn\\s*", "");
             String[] lines = clean.split("\n");
             session.setContent(clean);
             session.setLines(lines.length);
             session.setEndedAt(System.currentTimeMillis());
-            // 生成标题：取第一句有意义的话，截20字
             session.setTitle(generateTitle(clean));
             save(session);
         } catch (Exception e) {
@@ -70,51 +65,46 @@ public class TerminalSessionService {
         }
     }
 
-    /** 去除 ANSI 转义序列 */
-    static String stripAnsi(String text) {
-        if (text == null) return "";
-        // Remove OSC sequences (title, etc.) — BEL-terminated
-        text = text.replaceAll("\u001b\\][^\u0007]*\u0007", "");
-        // Remove OSC sequences — ST-terminated (ESC\)
-        text = text.replaceAll("\u001b\\][^\u001b]*\u001b\\\\", "");
-        // Remove CSI sequences: ESC [ params letter
-        // params can be digits, semicolons, question marks (> for mode set)
-        text = text.replaceAll("\u001b\\[[0-9;?>]*[a-zA-Z]", "");
-        // Remove DCS/other escape sequences
-        text = text.replaceAll("\u001b[>=]", "");
-        text = text.replaceAll("\u001bP[^\u001b]*\u001b\\\\", "");  // DCS sequences
-        // Remove standalone ESC (leftovers)
-        text = text.replaceAll("\u001b", "");
-        // Remove carriage returns
-        text = text.replaceAll("\r", "");
-        // Remove null bytes
-        text = text.replaceAll("\u0000", "");
-        // Collapse multiple blank lines
-        text = text.replaceAll("\\n{3,}", "\n\n");
-        return filterNoise(text);
+    /** 调用 pyte 虚拟终端渲染 raw 文件为干净文本 */
+    private static String renderWithPyte(String filePath) {
+        try {
+            String scriptDir = System.getProperty("user.dir") + "/scripts";
+            ProcessBuilder pb = new ProcessBuilder(
+                "python3", scriptDir + "/terminal-render.py", filePath);
+            pb.redirectErrorStream(false);
+            Process p = pb.start();
+            String out = new String(p.getInputStream().readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+            String err = new String(p.getErrorStream().readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+            int exitCode = p.waitFor();
+            if (exitCode != 0) {
+                System.err.println("[Terminal] pyte 渲染失败 (exit=" + exitCode + "): " + err);
+                // 回退：读原始文件做简单去 ANSI
+                return fallbackStripAnsi(Files.readString(Path.of(filePath)));
+            }
+            return out.trim();
+        } catch (Exception e) {
+            System.err.println("[Terminal] pyte 调用异常: " + e.getMessage());
+            try {
+                return fallbackStripAnsi(Files.readString(Path.of(filePath)));
+            } catch (Exception ex) {
+                return "";
+            }
+        }
     }
 
-    /** 过滤中间噪声：思考过程、进度条、空行等 */
-    private static String filterNoise(String text) {
-        if (text == null || text.isEmpty()) return text;
-        StringBuilder out = new StringBuilder();
-        String[] lines = text.split("\\n");
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) continue;
-            // 跳过思考/加载指示器
-            if (trimmed.matches("^[⏳⌛⏲].*")) continue;
-            if (trimmed.matches("^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏].*")) continue;
-            if (trimmed.matches("^(thinking|思考|Loading|处理中).*")) continue;
-            if (trimmed.equals("thinking...") || trimmed.equals("⏳") || trimmed.equals("...")) continue;
-            // 跳过纯符号/进度条
-            if (trimmed.matches("^[=#\\-━▁▂▃▄▅▆▇█]{5,}$")) continue;
-            if (trimmed.matches("^\\d+%$")) continue;
-            // 跳过 prompt 空行
-            if (trimmed.matches("^[➤>]\\s*$")) continue;
-            out.append(trimmed).append("\n");
-        }
-        return out.toString().trim();
+    /** 回退方案：简单去 ANSI（pyte 不可用时） */
+    private static String fallbackStripAnsi(String text) {
+        if (text == null) return "";
+        text = text.replaceAll("\u001b\\[[0-9;?>]*[a-zA-Z]", "");
+        text = text.replaceAll("\u001b\\][^\u0007]*\u0007", "");
+        text = text.replaceAll("\u001b\\][^\u001b]*\u001b\\\\", "");
+        text = text.replaceAll("\u001b", "");
+        text = text.replaceAll("\u0000", "");
+        text = text.replaceAll("\\r", "\n");
+        text = text.replaceAll("\\n{3,}", "\n\n");
+        return text;
     }
 
     /** 用AI总结内容生成20字以内标题 */
