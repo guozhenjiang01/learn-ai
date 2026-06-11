@@ -109,7 +109,68 @@ public class MediaScriptService {
         return list;
     }
 
-    /** AI 生成脚本 */
+    /** 一键生成通勤素材包 — 周五到周一全套脚本 */
+    public String generateCommutePack(String extra, String weather, String userId, String username) {
+        String weatherInfo = (weather != null && !weather.isEmpty())
+            ? "本周天气参考：" + weather + "\n" : "";
+        String extraInfo = (extra != null && !extra.isEmpty())
+            ? "额外要求：" + extra + "\n" : "";
+
+        String prompt = """
+            你是抖音短视频脚本创作专家。账号人设：
+            厚道哥，京东P7程序员，年薪百万，北京亦庄工作/太原家住，
+            每周五晚G551高铁回太原，周末超级奶爸，老婆北大博士，周一早返京。
+            内容风格：真实接地气，不露脸(POV+手部+空镜+字幕+配音)。
+
+            %s%s
+            请生成一套完整的「周五→周一」通勤素材包，包含4条15-30秒抖音脚本：
+
+            【周五晚·回太原】
+            场景：亦庄收工→北京丰台站→G551高铁→太原站→孩子出站口→到家热饭
+            情绪：疲惫中的期待
+
+            【周六·周末奶爸】
+            场景：早起带娃→菜市场/超市→公园遛娃→午睡→晚饭
+            情绪：温馨日常
+
+            【周日·家庭日+北大博士老婆】
+            场景：老婆写论文→一家三口→周末收尾的焦虑→收拾行李
+            情绪：秀恩爱+即将分别的小情绪
+
+            【周一早·返京通勤】
+            场景：早起→太原站→高铁→亦庄京东→工位开机→周一恐惧
+            情绪：牛马上钟的无奈
+
+            ═══ 格式要求（严格遵守） ═══
+            每条脚本用分隔线「━━━」隔开，格式：
+            ━━━
+            【标题】吸睛标题
+            【时长】秒数
+            【画面】
+            0-3秒：xxx
+            3-8秒：xxx
+            8-15秒：xxx
+            15-30秒：xxx
+            【字幕】
+            （与分镜一一对应）
+            【配音】旁白全文
+            【BGM】建议风格
+            【钩子】前3秒核心钩子
+            【固定结尾】我是厚道哥，周内大厂牛马，周末带娃模范
+            ━━━
+            
+            不露脸！POV视角+手部出镜+场景空镜+字幕配音。
+            """.formatted(weatherInfo, extraInfo);
+
+        try {
+            return chatModelFactory.getChatClient("deepSeekV4ProChatClient")
+                .prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            return "⚠ AI 生成失败: " + e.getMessage() + "\n请稍后重试";
+        }
+    }
+
+    /** AI 生成单条脚本（保留） */
     public MediaScript generate(String topic, String templateLabel, String extraHint,
                                  String userId, String username) throws IOException {
         String prompt = buildGeneratePrompt(topic, templateLabel, extraHint);

@@ -36,16 +36,17 @@ public class MediaScriptController {
         return service.list(userId, topic, status, size);
     }
 
-    /** AI 生成脚本 */
-    @PostMapping("/generate")
-    public MediaScript generate(@RequestBody Map<String, String> body,
-                                 HttpServletRequest req) throws IOException {
+    /** 一键生成通勤素材包（周五→周一全套） */
+    @PostMapping("/commute-pack")
+    public Map<String, Object> commutePack(@RequestBody Map<String, String> body,
+                                            HttpServletRequest req) throws IOException {
         String userId = (String) req.getAttribute("userId");
         String username = (String) req.getAttribute("username");
-        String topic = body.getOrDefault("topic", "日常");
-        String template = body.getOrDefault("template", "其他");
         String extra = body.getOrDefault("extra", "");
-        return service.generate(topic, template, extra, userId, username);
+        String weather = body.getOrDefault("weather", "");
+
+        String pack = service.generateCommutePack(extra, weather, userId, username);
+        return Map.of("pack", pack);
     }
 
     /** 更新脚本 */
