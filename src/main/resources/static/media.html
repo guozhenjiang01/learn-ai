@@ -12,10 +12,8 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
 .topbar a { color:var(--text2); text-decoration:none; font-size:14px; }
 .topbar a:hover { color:var(--orange); }
 .topbar .logo { font-size:16px; font-weight:700; color:var(--orange); }
-.topbar .badge { font-size:11px; background:var(--bg3); padding:2px 8px; border-radius:8px; color:var(--text2); margin-left:auto; cursor:pointer; }
 .container { max-width:800px; margin:0 auto; padding:20px 16px; }
 
-/* card */
 .card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:14px; }
 .card h2 { font-size:17px; color:var(--orange); margin-bottom:4px; }
 .card .sub { font-size:12px; color:var(--text2); margin-bottom:14px; }
@@ -27,10 +25,10 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
 .check-group label.checked { background:rgba(247,127,0,.12); border-color:var(--orange); color:var(--orange); }
 .check-group input[type=checkbox] { display:none; }
 
-/* inputs */
 .input-row { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-.input-row input { flex:1; min-width:180px; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; }
-.input-row input::placeholder { color:var(--text2); }
+.input-row input, .input-row select, .input-row textarea { flex:1; min-width:180px; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; }
+.input-row textarea { min-height:120px; resize:vertical; font-family:inherit; }
+.input-row input::placeholder, .input-row textarea::placeholder { color:var(--text2); }
 
 .btn { padding:9px 20px; border-radius:8px; font-size:13px; cursor:pointer; border:none; font-weight:600; transition:all .2s; }
 .btn-primary { background:var(--orange); color:#fff; width:100%; }
@@ -41,25 +39,38 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
 .btn-outline:hover { border-color:var(--orange); color:var(--orange); }
 .btn-green { background:var(--green); color:#000; }
 .btn-green:hover { opacity:.85; }
+.btn-block { width:100%; }
 
-/* result area */
+/* category tabs */
+.cat-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:12px; }
+.cat-tab { padding:5px 12px; font-size:12px; color:var(--text2); background:var(--bg3); border:1px solid var(--border); border-radius:6px; cursor:pointer; transition:all .2s; }
+.cat-tab:hover { color:var(--text); border-color:var(--text2); }
+.cat-tab.on { background:rgba(247,127,0,.12); border-color:var(--orange); color:var(--orange); }
+.cat-tab .count { font-size:10px; background:rgba(139,148,158,.15); padding:1px 5px; border-radius:6px; margin-left:3px; }
+
+/* result */
 .result { margin-top:16px; }
 .result .pack { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px; white-space:pre-wrap; font-size:13px; line-height:1.7; max-height:60vh; overflow-y:auto; }
 .pack hr { border:none; border-top:2px dashed var(--border); margin:14px 0; }
 .pack .hl { color:var(--orange); font-weight:600; }
 
-/* review bar */
 .review-bar { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
 .review-bar input { flex:1; min-width:200px; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; }
 .review-bar input::placeholder { color:var(--text2); }
 .action-bar { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
 
 /* materials */
-.mat-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; }
-.mat-card .mat-title { font-size:13px; font-weight:600; color:var(--orange); margin-bottom:4px; }
+.mat-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; }
+.mat-card .mat-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.mat-card .mat-title { font-size:13px; font-weight:600; color:var(--orange); }
+.mat-card .mat-cat { font-size:10px; padding:1px 6px; border-radius:6px; background:rgba(88,166,255,.12); color:var(--blue); }
 .mat-card .mat-preview { font-size:12px; color:var(--text2); white-space:pre-wrap; max-height:60px; overflow:hidden; }
 .mat-card .mat-actions { margin-top:6px; display:flex; gap:6px; }
 .mat-card .mat-time { font-size:11px; color:var(--text2); }
+
+/* manual input form */
+.manual-form { display:none; margin-top:12px; padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:8px; }
+.manual-form.on { display:block; }
 
 .spinner { display:inline-block; width:16px; height:16px; border:2px solid var(--border); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; margin-right:6px; vertical-align:middle; }
 @keyframes spin { to{transform:rotate(360deg);} }
@@ -71,6 +82,8 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
   .card { padding:14px; }
   .check-group label { padding:5px 10px; font-size:12px; }
   .review-bar { flex-direction:column; }
+  .cat-tabs { gap:2px; }
+  .cat-tab { padding:4px 8px; font-size:11px; }
 }
 </style>
 </head>
@@ -79,7 +92,6 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
 <div class="topbar">
   <a href="/">← 返回</a>
   <span class="logo">🚄 通勤素材包</span>
-  <span class="badge" id="matBadge" onclick="scrollToMaterials()" style="display:none;">📚 <span id="matCount">0</span></span>
 </div>
 
 <div class="container">
@@ -87,7 +99,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
   <!-- Step 1: Generate -->
   <div class="card">
     <h2>🎬 生成通勤素材</h2>
-    <div class="sub">勾选你要的脚本，一键生成</div>
+    <div class="sub">勾选话题，一键生成</div>
 
     <div class="check-group" id="topicChecks">
       <label class="checked" data-topic="周五回太原"><input type="checkbox" checked>🚄 周五回太原</label>
@@ -96,7 +108,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
     </div>
 
     <div class="input-row">
-      <input id="extraHint" placeholder="额外要求（可不填）：这周下雨、加班很晚、孩子生病...">
+      <input id="extraHint" placeholder="额外要求（可不填）">
       <input id="weatherInfo" placeholder="天气（自动预填）">
     </div>
 
@@ -105,16 +117,53 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
     <div class="result" id="result"></div>
   </div>
 
-  <!-- Step 3: Materials -->
+  <!-- Step 2: Materials -->
   <div class="card">
-    <h2>📚 素材库 <span style="font-size:12px;color:var(--text2);">（已采纳的脚本）</span></h2>
-    <div id="materialList"><div class="empty">暂无素材，生成后点「✅ 采纳」保存到这里</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+      <h2 style="margin:0;">📚 素材库</h2>
+      <button class="btn btn-sm btn-outline" onclick="toggleManual()">✏️ 手动录入</button>
+    </div>
+
+    <!-- category tabs -->
+    <div class="cat-tabs" id="catTabs">
+      <span class="cat-tab on" data-cat="">全部<span class="count" id="cntAll">0</span></span>
+      <span class="cat-tab" data-cat="通勤">🚄通勤<span class="count" id="cnt通勤">0</span></span>
+      <span class="cat-tab" data-cat="工资">💰工资<span class="count" id="cnt工资">0</span></span>
+      <span class="cat-tab" data-cat="老婆">👩‍🎓老婆<span class="count" id="cnt老婆">0</span></span>
+      <span class="cat-tab" data-cat="带娃">👶带娃<span class="count" id="cnt带娃">0</span></span>
+      <span class="cat-tab" data-cat="大厂">🏢大厂<span class="count" id="cnt大厂">0</span></span>
+      <span class="cat-tab" data-cat="其他">📝其他<span class="count" id="cnt其他">0</span></span>
+    </div>
+
+    <!-- manual input -->
+    <div class="manual-form" id="manualForm">
+      <div class="input-row">
+        <input id="manTitle" placeholder="素材标题">
+        <select id="manCat">
+          <option value="通勤">🚄 通勤</option>
+          <option value="工资">💰 工资</option>
+          <option value="老婆">👩‍🎓 老婆</option>
+          <option value="带娃">👶 带娃</option>
+          <option value="大厂">🏢 大厂</option>
+          <option value="其他">📝 其他</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <input id="manCustomCat" placeholder="自定义类目（选「其他」时可填）" style="min-width:140px;">
+      </div>
+      <textarea id="manContent" class="input-row" style="width:100%;min-height:150px;margin-bottom:8px;" placeholder="粘贴或手写素材内容..."></textarea>
+      <button class="btn btn-green btn-block" onclick="saveManual()">💾 保存到素材库</button>
+    </div>
+
+    <div id="materialList"><div class="empty">暂无素材，生成后点「✅ 采纳」或手动录入</div></div>
   </div>
 
 </div>
 
 <script>
-const TOKEN = localStorage.getItem('token') || '';
+const TOKEN=localS...en') || '';
+const CATEGORIES = ['通勤','工资','老婆','带娃','大厂','其他'];
+let activeCat = '';
 if (!TOKEN) { document.body.innerHTML = '<div class="empty" style="margin-top:60px;">⚠ 请先<a href="/">登录</a></div>'; }
 
 function api(path, opts) {
@@ -152,6 +201,16 @@ function getSelectedTopics() {
   } catch(e){}
 })();
 
+// --- category tabs ---
+document.getElementById('catTabs').addEventListener('click', function(e) {
+  const tab = e.target.closest('.cat-tab');
+  if (!tab) return;
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('on'));
+  tab.classList.add('on');
+  activeCat = tab.dataset.cat;
+  loadMaterials();
+});
+
 // --- Step 1: Generate ---
 let currentPack = '';
 function generate() {
@@ -173,13 +232,9 @@ function generate() {
   }).then(data => {
     btn.disabled = false;
     btn.innerHTML = '🔄 重新生成';
-    if (data.pack) {
-      currentPack = data.pack;
-      showPack(data.pack);
-    } else {
-      document.getElementById('result').innerHTML = '<div class="empty">生成失败</div>';
-    }
-  }).catch(err => {
+    if (data.pack) { currentPack = data.pack; showPack(data.pack); }
+    else { document.getElementById('result').innerHTML = '<div class="empty">生成失败</div>'; }
+  }).catch(() => {
     btn.disabled = false;
     btn.innerHTML = '⚡ 生成脚本';
     document.getElementById('result').innerHTML = '<div class="empty">网络错误</div>';
@@ -196,14 +251,13 @@ function showPack(content) {
   document.getElementById('result').innerHTML = `
     <div class="pack">${html}</div>
     <div class="review-bar">
-      <input id="reviewInput" placeholder="💬 评审意见：比如「周五的节奏太快了」「加一个和乘务员互动的细节」...">
+      <input id="reviewInput" placeholder="💬 评审意见：比如「节奏太快」「加乘务员互动细节」...">
     </div>
     <div class="action-bar">
       <button class="btn btn-sm btn-outline" onclick="revise()">✏️ 按意见修改</button>
       <button class="btn btn-sm btn-green" onclick="adopt()">✅ 采纳，存入素材库</button>
       <button class="btn btn-sm btn-outline" onclick="copyPack()">📋 复制全文</button>
-    </div>
-  `;
+    </div>`;
 }
 
 // --- Step 2: Revise ---
@@ -211,37 +265,31 @@ function revise() {
   const review = document.getElementById('reviewInput').value.trim();
   if (!review) { alert('请先输入评审意见'); return; }
   if (!currentPack) return;
-
   document.getElementById('result').innerHTML = '<div class="empty"><span class="spinner"></span>修改中...</div>';
-
   api('/media/revise', {
     method: 'POST',
     body: JSON.stringify({ previous: currentPack, review: review })
   }).then(data => {
-    if (data.pack) {
-      currentPack = data.pack;
-      showPack(data.pack);
-    } else {
-      document.getElementById('result').innerHTML = '<div class="empty">修改失败</div>';
-    }
-  }).catch(() => {
-    document.getElementById('result').innerHTML = '<div class="empty">网络错误</div>';
-  });
+    if (data.pack) { currentPack = data.pack; showPack(data.pack); }
+    else { document.getElementById('result').innerHTML = '<div class="empty">修改失败</div>'; }
+  }).catch(() => { document.getElementById('result').innerHTML = '<div class="empty">网络错误</div>'; });
 }
 
-// --- Step 3: Adopt ---
+// --- Step 3: Adopt with category ---
 function adopt() {
   if (!currentPack) return;
-  const title = prompt('给这组素材起个名字：', '通勤素材 ' + new Date().toLocaleDateString('zh-CN'));
+
+  const defCat = getSelectedTopics().includes('周五回太原') ? '通勤' : '其他';
+  const cat = prompt('选择类目：通勤/工资/老婆/带娃/大厂/其他', defCat);
+  if (!cat) return;
+  const title = prompt('给这组素材起个名字：', '素材 ' + new Date().toLocaleDateString('zh-CN'));
   if (!title) return;
 
-  // save each script block as a separate material, or save as one chunk
-  // Simple approach: save the whole pack as one material
   api('/media/materials', {
     method: 'POST',
     body: JSON.stringify({
       title: title,
-      topic: '通勤',
+      topic: cat,
       template: getSelectedTopics().join('/'),
       content: currentPack
     })
@@ -251,43 +299,92 @@ function adopt() {
   });
 }
 
+// --- Manual input ---
+function toggleManual() {
+  document.getElementById('manualForm').classList.toggle('on');
+}
+
+function saveManual() {
+  const title = document.getElementById('manTitle').value.trim();
+  const cat = document.getElementById('manCat').value;
+  const customCat = document.getElementById('manCustomCat').value.trim();
+  const content = document.getElementById('manContent').value.trim();
+
+  if (!title) { alert('请输入标题'); return; }
+  if (!content) { alert('请输入内容'); return; }
+
+  const finalCat = (cat === '其他' && customCat) ? customCat : cat;
+
+  api('/media/materials', {
+    method: 'POST',
+    body: JSON.stringify({ title: title, topic: finalCat, content: content, template: '手动录入' })
+  }).then(() => {
+    alert('✅ 已保存');
+    document.getElementById('manTitle').value = '';
+    document.getElementById('manContent').value = '';
+    document.getElementById('manualForm').classList.remove('on');
+    loadMaterials();
+  });
+}
+
 // --- Materials ---
 function loadMaterials() {
-  api('/media/materials').then(data => {
+  const params = activeCat ? '?topic=' + encodeURIComponent(activeCat) : '';
+  api('/media/materials' + params).then(data => {
     const list = Array.isArray(data) ? data : [];
-    document.getElementById('matCount').textContent = list.length;
-    document.getElementById('matBadge').style.display = list.length > 0 ? '' : 'none';
+    // count per category
+    countByCat(list);
+
     if (list.length === 0) {
-      document.getElementById('materialList').innerHTML = '<div class="empty">暂无素材，生成后点「✅ 采纳」保存到这里</div>';
+      document.getElementById('materialList').innerHTML = '<div class="empty">暂无素材，生成后点「✅ 采纳」或 ✏️ 手动录入</div>';
     } else {
       document.getElementById('materialList').innerHTML = list.map(m => `
         <div class="mat-card">
-          <div class="mat-title">${escHtml(m.title)} <span class="mat-time">${fmtTime(m.createdAt)}</span></div>
-          <div class="mat-preview">${escHtml((m.content||'').substring(0,100))}...</div>
+          <div class="mat-header">
+            <div class="mat-title">${escHtml(m.title)}</div>
+            <span class="mat-cat">${escHtml(m.topic||'未分类')}</span>
+          </div>
+          <div class="mat-preview">${escHtml((m.content||'').substring(0,120))}${(m.content||'').length>120?'...':''}</div>
           <div class="mat-actions">
             <button class="btn btn-sm btn-outline" onclick="viewMaterial('${m.id}')">📖 展开</button>
-            <button class="btn btn-sm btn-outline" onclick="copyMaterial('${m.id}')">📋 复制</button>
+            <button class="btn btn-sm btn-outline" onclick="copyById('${m.id}')">📋 复制</button>
             <button class="btn btn-sm btn-outline" style="color:var(--red);" onclick="deleteMaterial('${m.id}')">🗑</button>
           </div>
+          <div class="mat-time">${fmtTime(m.createdAt)}</div>
         </div>`).join('');
     }
   });
+}
+
+function countByCat(list) {
+  const counts = {};
+  list.forEach(m => { const c = m.topic || '其他'; counts[c] = (counts[c]||0) + 1; });
+  let total = 0;
+  document.getElementById('cntAll').textContent = list.length;
+  CATEGORIES.forEach(c => {
+    const n = counts[c] || 0;
+    document.getElementById('cnt'+c).textContent = n;
+    total += n;
+  });
+  // handle custom categories
+  const known = new Set(CATEGORIES);
+  let otherCount = 0;
+  Object.entries(counts).forEach(([k,v]) => { if (!known.has(k)) otherCount += v; });
+  if (otherCount > 0) document.getElementById('cnt其他').textContent = (counts['其他']||0) + otherCount;
 }
 
 function viewMaterial(id) {
   api('/media/scripts/' + id).then(data => {
     if (data && data.content) {
       showPack(data.content);
-      window.scrollTo({ top: document.getElementById('result').offsetTop - 80, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior:'smooth' });
     }
   });
 }
 
-function copyMaterial(id) {
+function copyById(id) {
   api('/media/scripts/' + id).then(data => {
-    if (data && data.content) {
-      navigator.clipboard.writeText(data.content).then(() => alert('已复制'));
-    }
+    if (data && data.content) navigator.clipboard.writeText(data.content).then(() => alert('已复制'));
   });
 }
 
@@ -296,16 +393,11 @@ function deleteMaterial(id) {
   api('/media/materials/' + id, { method:'DELETE' }).then(() => loadMaterials());
 }
 
-function scrollToMaterials() {
-  document.getElementById('materialList').scrollIntoView({ behavior:'smooth' });
-}
-
 function copyPack() {
   if (!currentPack) return;
   navigator.clipboard.writeText(currentPack).then(() => alert('已复制'));
 }
 
-// helpers
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(ts) {
   if (!ts) return '';
@@ -313,7 +405,6 @@ function fmtTime(ts) {
   return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
 
-// init
 loadMaterials();
 </script>
 </body>

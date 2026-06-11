@@ -59,11 +59,13 @@ public class MediaScriptController {
         return service.create(s);
     }
 
-    /** 素材库列表 */
+    /** 素材库列表（支持按类目筛选） */
     @GetMapping("/materials")
-    public List<MediaScript> materials(HttpServletRequest req) throws IOException {
+    public List<MediaScript> materials(
+            @RequestParam(defaultValue = "") String topic,
+            HttpServletRequest req) throws IOException {
         String userId = (String) req.getAttribute("userId");
-        return service.list(userId, null, "adopted", 100);
+        return service.list(userId, topic, "adopted", 100);
     }
 
     /** 删除素材 */
