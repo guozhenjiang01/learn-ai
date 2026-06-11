@@ -184,6 +184,46 @@ public class MediaScriptService {
         }
     }
 
+    /** 自由生成 — 直接填提示词 */
+    public String freeGenerate(String prompt, String extra) {
+        String extraInfo = (extra != null && !extra.isEmpty())
+            ? "\n额外要求：" + extra : "";
+
+        String fullPrompt = """
+            你是抖音短视频脚本创作专家。账号人设：
+            厚道哥，京东P7程序员，年薪百万，北京亦庄工作/太原家住，
+            每周五晚G551高铁回太原，周末超级奶爸，老婆北大博士，周一早返京。
+            内容风格：真实接地气，不露脸(POV+手部+空镜+字幕+配音)。
+
+            请根据以下要求生成一条15-30秒抖音脚本：
+            %s%s
+
+            格式要求（严格遵守）：
+            ━━━
+            【标题】吸睛标题
+            【时长】秒数
+            【画面】
+            0-3秒：xxx
+            3-8秒：xxx
+            8-15秒：xxx
+            15-30秒：xxx
+            【字幕】（与分镜一一对应）
+            【配音】旁白全文
+            【BGM】建议风格
+            【钩子】前3秒核心钩子
+            【固定结尾】我是厚道哥，周内大厂牛马，周末带娃模范
+            ━━━
+            不露脸！只输出脚本，不要解释。
+            """.formatted(prompt, extraInfo);
+
+        try {
+            return chatModelFactory.getChatClient("deepSeekV4ProChatClient")
+                .prompt().user(fullPrompt).call().content();
+        } catch (Exception e) {
+            return "⚠ AI 生成失败: " + e.getMessage();
+        }
+    }
+
     /** 根据评审意见修改脚本 */
     public String revisePack(String previousContent, String review) {
         String prompt = """

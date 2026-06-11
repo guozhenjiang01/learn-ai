@@ -31,7 +31,14 @@ public class MediaScriptController {
         return catService.add(body.getOrDefault("name", ""));
     }
 
-    /** 通勤素材包生成（支持勾选 topics） */
+    /** 自由生成（直接填提示词） */
+    @PostMapping("/free")
+    public Map<String, Object> freeGenerate(@RequestBody Map<String, String> body) throws IOException {
+        String prompt = body.getOrDefault("prompt", "");
+        String extra = body.getOrDefault("extra", "");
+        String result = service.freeGenerate(prompt, extra);
+        return Map.of("pack", result);
+    }
     @SuppressWarnings("unchecked")
     @PostMapping("/commute-pack")
     public Map<String, Object> commutePack(@RequestBody Map<String, Object> body,
