@@ -24,6 +24,8 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
 .check-group label:hover { border-color:var(--orange); }
 .check-group label.checked { background:rgba(247,127,0,.12); border-color:var(--orange); color:var(--orange); }
 .check-group input[type=checkbox] { display:none; }
+.check-group label .del { margin-left:2px; color:var(--text2); font-size:11px; cursor:pointer; padding:1px 4px; border-radius:3px; }
+.check-group label .del:hover { color:var(--red); background:rgba(248,81,73,.15); }
 
 .input-row { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
 .input-row input, .input-row select, .input-row textarea { flex:1; min-width:180px; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; }
@@ -84,6 +86,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
   .review-bar { flex-direction:column; }
   .cat-tabs { gap:2px; }
   .cat-tab { padding:4px 8px; font-size:11px; }
+  #oneoffTopic, #oneoffReq { font-size:13px !important; padding:6px 10px !important; min-width:100%; }
 }
 </style>
 </head>
@@ -102,19 +105,30 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--bg); co
     <div class="sub">勾选话题，一键生成</div>
 
     <div class="check-group" id="topicChecks">
-      <label class="checked" data-topic="周五回太原"><input type="checkbox" checked>🚄 周五回太原</label>
-      <label class="checked" data-topic="周末日常"><input type="checkbox" checked>🏠 周末日常</label>
-      <label class="checked" data-topic="周一返京"><input type="checkbox" checked>🏢 周一返京</label>
-      <label id="addTopicBtn" style="border-style:dashed;" onclick="showTopicInput(event)">➕ 自定义</label>
+      <!-- 默认话题 hardcoded，自定义话题从 localStorage 恢复 -->
     </div>
     <div class="input-row" id="topicInputRow" style="display:none;">
       <input id="newTopicInput" placeholder="输入自定义话题，如「加班」「团建」...">
       <button class="btn btn-sm btn-outline" onclick="addCustomTopic()">添加</button>
       <button class="btn btn-sm btn-outline" onclick="hideTopicInput()" style="color:var(--text2);">✕</button>
     </div>
+    <div class="input-row" style="margin-top:6px;">
+      <input id="oneoffTopic" placeholder="💬 单次话题（临时输入，不保存到列表）" style="font-size:12px;">
+    </div>
+
+    <!-- 额外要求：多选 -->
+    <div class="sub" style="margin-bottom:6px;">🎯 额外要求（多选，可不选）</div>
+    <div class="check-group" id="reqChecks"></div>
+    <div class="input-row" id="reqInputRow" style="display:none;">
+      <input id="newReqInput" placeholder="输入自定义要求，如「用晋中方言」「突出工资对比」...">
+      <button class="btn btn-sm btn-outline" onclick="addCustomReq()">添加</button>
+      <button class="btn btn-sm btn-outline" onclick="hideReqInput()" style="color:var(--text2);">✕</button>
+    </div>
+    <div class="input-row" style="margin-top:6px;">
+      <input id="oneoffReq" placeholder="💬 单次要求（临时输入，不保存到列表）" style="font-size:12px;">
+    </div>
 
     <div class="input-row">
-      <input id="extraHint" placeholder="额外要求（可不填）">
       <input id="weatherInfo" placeholder="天气（自动预填）">
     </div>
 
@@ -223,22 +237,77 @@ function renderCatDropdowns() {
   selects.forEach(s => { s.innerHTML = opts; });
 }
 
-// --- topic checkboxes ---
-document.querySelectorAll('#topicChecks label').forEach(l => {
-  l.addEventListener('click', function(e) {
-    e.preventDefault();
-    const cb = this.querySelector('input');
-    cb.checked = !cb.checked;
-    this.classList.toggle('checked', cb.checked);
+// ============ 持久化存储 ============
+const LS_TOPICS = 'media_custom_topics';
+const LS_REQS = 'media_custom_reqs';
+const DEFAULT_TOPICS = [
+  {name:'周五回太原',emoji:'🚄'},
+  {name:'周末日常',emoji:'🏠'},
+  {name:'周一返京',emoji:'🏢'}
+];
+const DEFAULT_REQS = [
+  {name:'节奏快（15秒内）'},
+  {name:'加强冲突/反差'},
+  {name:'加入具体数字'},
+  {name:'温暖治愈风'},
+  {name:'扎心真实风'},
+  {name:'突出金句'}
+];
+
+function loadCustomTopics() {
+  try { return JSON.parse(_ls.getItem(LS_TOPICS)||'[]'); } catch(e) { return []; }
+}
+function saveCustomTopics(arr) { _ls.setItem(LS_TOPICS, JSON.stringify(arr)); }
+function loadCustomReqs() {
+  try { return JSON.parse(_ls.getItem(LS_REQS)||'[]'); } catch(e) { return []; }
+}
+function saveCustomReqs(arr) { _ls.setItem(LS_REQS, JSON.stringify(arr)); }
+
+// ============ 话题 checkboxes ============
+function buildTopicLabel(item, isDefault) {
+  const emoji = item.emoji || '📌';
+  const delHtml = isDefault ? '' : '<span class="del" data-action="del-topic" data-name="' + escAttr(item.name) + '">×</span>';
+  return '<label class="checked" data-topic="' + escAttr(item.name) + '">' +
+    '<input type="checkbox" checked> ' + emoji + ' ' + escHtml(item.name) + delHtml + '</label>';
+}
+
+function renderTopics() {
+  const customTopics = loadCustomTopics();
+  const container = document.getElementById('topicChecks');
+  let html = '';
+  DEFAULT_TOPICS.forEach(t => { html += buildTopicLabel(t, true); });
+  customTopics.forEach(t => { html += buildTopicLabel(t, false); });
+  html += '<label id="addTopicBtn" style="border-style:dashed;" onclick="showTopicInput(event)">➕ 自定义</label>';
+  container.innerHTML = html;
+  container.querySelectorAll('label[data-topic]').forEach(l => {
+    l.addEventListener('click', function(e) {
+      if (e.target.classList.contains('del')) return;
+      e.preventDefault();
+      const cb = this.querySelector('input');
+      cb.checked = !cb.checked;
+      this.classList.toggle('checked', cb.checked);
+    });
   });
-});
+  // 事件委托：删除按钮
+  container.querySelectorAll('.del[data-action="del-topic"]').forEach(d => {
+    d.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      const name = this.dataset.name;
+      if (!confirm('删除话题「' + name + '」？')) return;
+      const topics = loadCustomTopics().filter(t => t.name !== name);
+      saveCustomTopics(topics);
+      renderTopics();
+    });
+  });
+}
 
 function getSelectedTopics() {
   return Array.from(document.querySelectorAll('#topicChecks input:checked'))
-    .map(cb => cb.closest('label').dataset.topic || cb.closest('label').textContent.trim());
+    .map(cb => cb.closest('label').dataset.topic)
+    .filter(Boolean);
 }
 
-// --- custom topic ---
+// --- custom topic add ---
 function showTopicInput(e) {
   e.preventDefault(); e.stopPropagation();
   document.getElementById('topicInputRow').style.display = 'flex';
@@ -249,29 +318,18 @@ function addCustomTopic() {
   const input = document.getElementById('newTopicInput');
   const name = input.value.trim();
   if (!name) return;
-  // Check for duplicate
-  const existing = document.querySelectorAll('#topicChecks label[data-topic]');
-  for (const el of existing) {
-    if (el.dataset.topic === name) { alert('话题已存在'); return; }
-  }
-  // 持久保存类目
-  api('/media/categories', { method:'POST', body:JSON.stringify({name:name}) }).then(() => {
-    loadCategories(); // 刷新类目列表
-  });
-  // 添加为checkbox
-  const group = document.getElementById('topicChecks');
-  const label = document.createElement('label');
-  label.className = 'checked';
-  label.dataset.topic = name;
-  label.innerHTML = '<input type="checkbox" checked> 📌 ' + escHtml(name);
-  label.addEventListener('click', function(e) {
-    e.preventDefault();
-    const cb = this.querySelector('input');
-    cb.checked = !cb.checked;
-    this.classList.toggle('checked', cb.checked);
-  });
-  const addBtn = document.getElementById('addTopicBtn');
-  group.insertBefore(label, addBtn);
+  // 检查是否与默认话题重名
+  if (DEFAULT_TOPICS.some(t => t.name === name)) { alert('与默认话题重名'); return; }
+  // 检查是否已存在
+  const topics = loadCustomTopics();
+  if (topics.some(t => t.name === name)) { alert('话题已存在'); return; }
+  // 持久化
+  topics.push({name: name});
+  saveCustomTopics(topics);
+  // 同时保存为类目
+  api('/media/categories', { method:'POST', body:JSON.stringify({name:name}) }).then(() => loadCategories());
+  // 刷新
+  renderTopics();
   input.value = '';
   document.getElementById('topicInputRow').style.display = 'none';
 }
@@ -281,16 +339,91 @@ function hideTopicInput() {
   document.getElementById('newTopicInput').value = '';
 }
 
-// 点页面其他地方关闭话题输入
+// ============ 额外要求 checkboxes ============
+function buildReqLabel(item, isDefault) {
+  const delHtml = isDefault ? '' : '<span class="del" data-action="del-req" data-name="' + escAttr(item.name) + '">×</span>';
+  return '<label data-req="' + escAttr(item.name) + '">' +
+    '<input type="checkbox"> 🎯 ' + escHtml(item.name) + delHtml + '</label>';
+}
+
+function renderReqs() {
+  const customReqs = loadCustomReqs();
+  const container = document.getElementById('reqChecks');
+  let html = '';
+  DEFAULT_REQS.forEach(r => { html += buildReqLabel(r, true); });
+  customReqs.forEach(r => { html += buildReqLabel(r, false); });
+  html += '<label id="addReqBtn" style="border-style:dashed;" onclick="showReqInput(event)">➕ 自定义</label>';
+  container.innerHTML = html;
+  container.querySelectorAll('label[data-req]').forEach(l => {
+    l.addEventListener('click', function(e) {
+      if (e.target.classList.contains('del')) return;
+      e.preventDefault();
+      const cb = this.querySelector('input');
+      cb.checked = !cb.checked;
+      this.classList.toggle('checked', cb.checked);
+    });
+  });
+  // 事件委托：删除按钮
+  container.querySelectorAll('.del[data-action="del-req"]').forEach(d => {
+    d.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      const name = this.dataset.name;
+      if (!confirm('删除要求「' + name + '」？')) return;
+      const reqs = loadCustomReqs().filter(r => r.name !== name);
+      saveCustomReqs(reqs);
+      renderReqs();
+    });
+  });
+}
+
+function getSelectedReqs() {
+  return Array.from(document.querySelectorAll('#reqChecks input:checked'))
+    .map(cb => cb.closest('label').dataset.req)
+    .filter(Boolean);
+}
+
+function showReqInput(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('reqInputRow').style.display = 'flex';
+  document.getElementById('newReqInput').focus();
+}
+
+function addCustomReq() {
+  const input = document.getElementById('newReqInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (DEFAULT_REQS.some(r => r.name === name)) { alert('与默认要求重名'); return; }
+  const reqs = loadCustomReqs();
+  if (reqs.some(r => r.name === name)) { alert('要求已存在'); return; }
+  reqs.push({name: name});
+  saveCustomReqs(reqs);
+  renderReqs();
+  input.value = '';
+  document.getElementById('reqInputRow').style.display = 'none';
+}
+
+function hideReqInput() {
+  document.getElementById('reqInputRow').style.display = 'none';
+  document.getElementById('newReqInput').value = '';}
+
+// 点页面其他地方关闭话题/要求输入
 document.addEventListener('click', function(e) {
-  const row = document.getElementById('topicInputRow');
-  const btn = document.getElementById('addTopicBtn');
-  if (row.style.display !== 'none' && !row.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+  const topicRow = document.getElementById('topicInputRow');
+  const topicBtn = document.getElementById('addTopicBtn');
+  const reqRow = document.getElementById('reqInputRow');
+  const reqBtn = document.getElementById('addReqBtn');
+  if (topicRow.style.display !== 'none' && !topicRow.contains(e.target) && e.target !== topicBtn && !topicBtn.contains(e.target)) {
     hideTopicInput();
+  }
+  if (reqRow.style.display !== 'none' && !reqRow.contains(e.target) && e.target !== reqBtn && !reqBtn.contains(e.target)) {
+    hideReqInput();
   }
 });
 document.getElementById('newTopicInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') addCustomTopic();
+});
+document.getElementById('newReqInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') addCustomReq();
 });
 
 // --- pre-fill weather ---
@@ -319,19 +452,25 @@ document.getElementById('catTabs').addEventListener('click', function(e) {
 // --- Step 1: Generate ---
 let currentPack = '';
 function generate() {
-  const topics = getSelectedTopics();
-  if (topics.length === 0) { alert('请至少勾选一个话题'); return; }
+  let topics = getSelectedTopics();
+  const oneoffTopic = document.getElementById('oneoffTopic').value.trim();
+  if (oneoffTopic) topics = topics.concat([oneoffTopic]);  // 单次话题追加
+  if (topics.length === 0) { alert('请至少勾选一个话题或输入单次话题'); return; }
 
   const btn = document.getElementById('genBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>生成中，约需30秒...';
   document.getElementById('result').innerHTML = '';
 
+  let extraReqs = getSelectedReqs();
+  const oneoffReq = document.getElementById('oneoffReq').value.trim();
+  if (oneoffReq) extraReqs.push(oneoffReq);  // 单次要求追加
+
   api('/media/commute-pack', {
     method: 'POST',
     body: JSON.stringify({
       topics: topics,
-      extra: document.getElementById('extraHint').value,
+      extra: extraReqs.join('、'),
       weather: document.getElementById('weatherInfo').value
     })
   }).then(data => {
@@ -384,11 +523,18 @@ function revise() {
 function adopt() {
   if (!currentPack) return;
 
-  const defCat = getSelectedTopics().includes('周五回太原') ? '通勤' : (allCategories[0] ? allCategories[0].name : '其他');
+  // 根据选中话题智能推荐类目
+  const topics = getSelectedTopics();
+  const defCat = topics.some(t => t.includes('周五') || t.includes('周一') || t.includes('通勤')) ? '通勤' :
+                 topics.some(t => t.includes('工资') || t.includes('百万')) ? '工资' :
+                 topics.some(t => t.includes('老婆') || t.includes('博士')) ? '老婆' :
+                 topics.some(t => t.includes('娃') || t.includes('周末')) ? '带娃' :
+                 topics.some(t => t.includes('大厂') || t.includes('京东') || t.includes('工位')) ? '大厂' :
+                 (allCategories[0] ? allCategories[0].name : '其他');
   const catNames = allCategories.map(c => c.name).join('/');
   const cat = prompt('选择类目：' + catNames, defCat);
   if (!cat) return;
-  const title = prompt('给这组素材起个名字：', '素材 ' + new Date().toLocaleDateString('zh-CN'));
+  const title = prompt('给这段素材起个名字：', '素材 ' + new Date().toLocaleDateString('zh-CN'));
   if (!title) return;
 
   api('/media/materials', {
@@ -506,8 +652,12 @@ function fmtTime(ts) {
   return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
 
-loadCategories();
-loadMaterials();
+if (TOKEN) {
+  renderTopics();
+  renderReqs();
+  loadCategories();
+  loadMaterials();
+}
 </script>
 </body>
 </html>
